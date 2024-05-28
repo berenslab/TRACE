@@ -1,2 +1,4 @@
-# contrastive_learning_neuro
-contrastive learning for timeseries(neuro) data
+# Contrastive_learning_neuro
+Contrastive learning for timeseries (neuro) data
+
+Maintainer of the repository: Lisa Schmors
