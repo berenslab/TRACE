@@ -56,11 +56,13 @@ def main():
     parser.add_argument("-b", "--batch_size", default=64, type=int, help="Batch size.")
     parser.add_argument("-d", "--dir", type=str, help="Directory to save results.")
     parser.add_argument("-o", "--output_dim", type=int, help="Dimensions of final layer.")
+    parser.add_argument("-l", "--loss_mode", type=str, default='infonce', help="Mode of the loss.")
+    parser.add_argument("-t", "--trials", type=int, default=5, help="Number of trials to average over for generating positive pair.")
     args = parser.parse_args()
 
     # Load data and create dataset
     data, labels = load_data()
-    dataset = ContrastiveTrialPairGenerator(data)
+    dataset = ContrastiveTrialPairGenerator(data, n_trials_pos_pair=int(args.trials))
 
     # Set parameters
     model_name = str(args.model_name)
@@ -84,7 +86,7 @@ def main():
     clamp_high = float("inf")
     clamp_low = float("-inf")
     Z = 1.0
-    loss_mode = "infonce"  # or infonce, nce, neg_sample, ...
+    loss_mode = args.loss_mode  # or infonce, nce, neg_sample, ...
     metric = "euclidean"
     optimizer = "sgd"
     weight_decay = 5e-4
@@ -106,7 +108,7 @@ def main():
     current_datetime = datetime.now()
     datetime_string = current_datetime.strftime("%Y%m%d_%H%M%S")
     file_name = f"{datetime_string}_embd_{model_name}_epochs{n_epochs}_batchsize{batch_size}" \
-                f"_outputdim{output_dim}_run{run}"
+                f"_outputdim{output_dim}_run{run}_ntrials{int(args.trials)}"
     print(f'Directory: {args.dir}')
     print(f'File name: {file_name}')
     plots_dir = os.path.join(args.dir, "plots")

@@ -34,9 +34,11 @@ class ContrastiveTrialPairGenerator(Dataset):
     Dynamically generates pairs of samples as positive pairs for contrastive learning.
     Each pair is freshly computed by selecting random trials for mean computation.
     """
-    def __init__(self, dataset, num_trials=10, transform=None):
+    def __init__(self, dataset, transform=None, n_trials_pos_pair=5):
         self.dataset = dataset
-        self.num_trials = num_trials
+        self.num_trials = dataset.shape[1] # number of trials recorded
+        self.ntrials = n_trials_pos_pair # number of trials to average over to generate positive pair
+        assert self.ntrials <= self.num_trials / 2, 'Not enough trials to average over for generating positive pair. Please choose a smaller n_trials_pos_pair'
         self.transform = transform
 
     def __len__(self):
@@ -56,8 +58,9 @@ class ContrastiveTrialPairGenerator(Dataset):
 
     def _generate_dynamic_pairs_indices(self):
         all_indices = list(range(self.num_trials))
-        trials_indices1 = random.sample(all_indices, k=self.num_trials // 2)
-        trials_indices2 = [i for i in all_indices if i not in trials_indices1]
+        trials_indices1 = random.sample(all_indices, self.ntrials)
+        remaining_numbers = [num for num in all_indices if num != trials_indices1]
+        trials_indices2 = random.sample(remaining_numbers, self.ntrials)
         return trials_indices1, trials_indices2
 
 class TimeSeriesMLP(nn.Module):
