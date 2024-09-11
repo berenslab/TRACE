@@ -7,22 +7,25 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class TimeSeriesDataset(Dataset):
-    def __init__(self, data, labels=None, transform=None):
+    def __init__(self, data_chirp, data_bar, labels=None, transform=None):
         """
         Args:
             data (np.array): Time series data of shape (num_samples, num_trials, num_features).
             labels (np.array): Labels for the data.
             transform (callable, optional): Optional transform to be applied on a sample.
         """
-        self.data = data
+        self.data_chirp = data_chirp
+        self.data_bar = data_bar
         self.labels = labels
         self.transform = transform
 
     def __len__(self):
-        return len(self.data)
+        return self.data_chirp.shape[0]
 
     def __getitem__(self, idx):
-        sample = np.mean(self.data[idx], axis=0)  # Compute mean over trials
+        sample_chirp = np.mean(self.data_chirp[idx], axis=0)  # Compute mean over trials
+        sample_bar = np.mean(self.data_bar[idx], axis=0)  # Compute mean over trials
+        sample = np.concatenate([sample_chirp, sample_bar])
         if self.transform:
             sample = self.transform(sample)
         if self.labels is not None:
@@ -34,21 +37,46 @@ class ContrastiveTrialPairGenerator(Dataset):
     Dynamically generates pairs of samples as positive pairs for contrastive learning.
     Each pair is freshly computed by selecting random trials for mean computation.
     """
-    def __init__(self, dataset, transform=None, n_trials_pos_pair=5):
-        self.dataset = dataset
-        self.num_trials = dataset.shape[1] # number of trials recorded
-        self.ntrials = n_trials_pos_pair # number of trials to average over to generate positive pair
-        assert self.ntrials <= self.num_trials / 2, 'Not enough trials to average over for generating positive pair. Please choose a smaller n_trials_pos_pair'
+    def __init__(self, dataset_chirp, dataset_bar, n_trials_pos_pair_chirp=7,
+                 n_trials_pos_pair_bar=5, transform=None):
+        # Chirp
+        self.dataset_chirp = dataset_chirp
+        self.num_trials_chirp = dataset_chirp.shape[1]  # number of trials recorded
+        self.ntrials_chirp = n_trials_pos_pair_chirp  # trials to average over for pos. pair
+
+        # Moving bar
+        self.dataset_bar = dataset_bar
+        self.num_trials_bar = dataset_bar.shape[1]
+        self.ntrials_bar = n_trials_pos_pair_bar
+
+        assert ((self.ntrials_chirp <= self.num_trials_chirp / 2) or
+                (self.ntrials_bar <= self.num_trials_bar / 2)), \
+            'Not enough trials to average over for generating positive pair. ' \
+            'Please choose a smaller n_trials_pos_pair'
         self.transform = transform
 
     def __len__(self):
-        return len(self.dataset)
+        return self.dataset_chirp.shape[0]
 
     def __getitem__(self, idx):
-        trials_indices1, trials_indices2 = self._generate_dynamic_pairs_indices()
+        # Generate positive pair for chirp response
+        n_pos_trials_chirp = self.ntrials_chirp
+        num_trials_chirp = self.num_trials_chirp
+        trials_indices1_chirp, trials_indices2_chirp = self._generate_dynamic_pairs_indices(
+            n_pos_trials_chirp, num_trials_chirp)
+        sample1_chirp = np.mean(self.dataset_chirp[idx, trials_indices1_chirp, :], axis=0)
+        sample2_chirp = np.mean(self.dataset_chirp[idx, trials_indices2_chirp, :], axis=0)
 
-        sample1 = np.mean(self.dataset[idx, trials_indices1, :], axis=0)
-        sample2 = np.mean(self.dataset[idx, trials_indices2, :], axis=0)
+        # Generate positive pair for moving bar responses
+        n_pos_trials_bar = self.ntrials_bar
+        num_trials_bar = self.num_trials_bar
+        trials_indices1_bar, trials_indices2_bar = self._generate_dynamic_pairs_indices(
+            n_pos_trials_bar, num_trials_bar)
+        sample1_bar = np.mean(self.dataset_bar[idx, trials_indices1_bar, :], axis=0)
+        sample2_bar = np.mean(self.dataset_bar[idx, trials_indices2_bar, :], axis=0)
+
+        sample1 = np.concatenate([sample1_chirp, sample1_bar])
+        sample2 = np.concatenate([sample2_chirp, sample2_bar])
 
         if self.transform:
             sample1 = self.transform(sample1)
@@ -56,11 +84,11 @@ class ContrastiveTrialPairGenerator(Dataset):
 
         return sample1, sample2
 
-    def _generate_dynamic_pairs_indices(self):
-        all_indices = list(range(self.num_trials))
-        trials_indices1 = random.sample(all_indices, self.ntrials)
+    def _generate_dynamic_pairs_indices(self, n_pos_trials, num_trials):
+        all_indices = list(range(num_trials))
+        trials_indices1 = random.sample(all_indices, n_pos_trials)
         remaining_numbers = [num for num in all_indices if num != trials_indices1]
-        trials_indices2 = random.sample(remaining_numbers, self.ntrials)
+        trials_indices2 = random.sample(remaining_numbers, n_pos_trials)
         return trials_indices1, trials_indices2
 
 class TimeSeriesMLP(nn.Module):

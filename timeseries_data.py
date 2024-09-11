@@ -20,7 +20,22 @@ from cne import ContrastiveEmbedding
 sys.path.append("/gpfs01/berens/user/lschmors/Code/superior_colliculus/cne_timeseries/")
 from sc_utils import ContrastiveTrialPairGenerator, TimeSeriesDataset, TimeSeriesMLP
 
-def load_data(filepath='/gpfs01/berens/user/lschmors/Code/superior_colliculus'):
+def load_data(filepath='/gpfs01/berens/user/lschmors/Code/superior_colliculus', trim=True,
+                  flatten_bar=False):
+    """
+    Load data for chirp responses and bar responses.
+
+    Parameters:
+        filepath: path to bar and chrip response data
+        trim: cut off first sec of chirp due to experimental session dependent adaptation phase
+        flatten_bar: if True, flatten bar responses (8 directions) to [ROIs, trials, 8*2sec]
+
+    Returns:
+        data_chirp_norm: normalized chirp response data
+        data_bar_norm: normalized bar response data
+        labels: functional type
+
+    """
     # Load chirp trial responses
     file_name = filepath + '/Data/retinal_axons/chirp_trials.h5'
     with h5py.File(file_name, 'r') as file:
@@ -30,23 +45,58 @@ def load_data(filepath='/gpfs01/berens/user/lschmors/Code/superior_colliculus'):
         else:
             raise ValueError("Dataset 'chirp_trials' not found in file.")
 
+    # Load bar trial responses
+    file_name_bar = filepath + '/Data/retinal_axons/bar_trials.h5'
+    with h5py.File(file_name_bar, 'r') as file:
+        # Check if the dataset exists
+        if "bar_trials" in file:
+            data_bar = file["bar_trials"][:]  # Shape: (ROIs, trials, time)
+        else:
+            raise ValueError("Dataset 'bar_trials' not found in file.")
+    if flatten_bar==False:
+        # Get temporal response only
+        data_bar_non_norm = np.mean(data_bar, axis=2) # [ROIs, trials, 2sec]
+    else:
+        data_bar_non_norm = data_bar.reshape([data_bar.shape[0],
+                                             data_bar.shape[1],
+                                             data_bar.shape[2]*data_bar.shape[3]]) # [ROIs, trials, 8*2sec]
+    # Normalize data
+    data_chirp_norm = normalize_data(data_chirp)
+    data_bar_norm = normalize_data(data_bar_non_norm)
+
+    if trim:
+        # Trim first second of chirp
+        data_chirp_norm = data_chirp_norm[:, :, 9:]
+
     # Load labels
     file_name = filepath + '/20240207_tSNE/data/20240207_df_clusterd_identified.pkl'
     df_clustered = pd.read_pickle(file_name)
     labels = df_clustered['clusterID_sorted'].values.astype(int)
 
-    # Normalize data
-    # Calculate the mean and std per neuron across all trials
-    chirp_average = np.mean(data_chirp, axis=1)
-    chirp_mean_per_neuron = np.mean(chirp_average, axis=1)
-    chirp_std_per_neuron = np.std(chirp_average, axis=1)
-    # Normalize single trial responses using the grand mean and grand SD over all trials
-    # Normalize per neuron
-    data_chirp_norm = ((data_chirp - chirp_mean_per_neuron[:, np.newaxis, np.newaxis]) /
-                                            chirp_std_per_neuron[:, np.newaxis, np.newaxis])
-    data = data_chirp_norm
-    return data, labels
+    return data_chirp_norm, data_bar_norm, labels
 
+def normalize_data(data):
+    """
+    Normalizes the single trial responses per ROI.
+
+    Parameters:
+    data (numpy array): The input data array of shape (samples, trials, time).
+
+    Returns:
+    data_normalized (numpy array): The normalized data array where every single trial
+        response is normalized using the mean and SD of the mean response across all trials.
+    """
+
+    # Calculate the mean and standard deviation per unit across all trials
+    unit_average = np.mean(data, axis=1)
+    unit_mean = np.mean(unit_average, axis=1)
+    unit_std = np.std(unit_average, axis=1)
+
+    # Normalize each unit's data across all trials using the grand mean and grand SD
+    data_normalized = (data - unit_mean[:, np.newaxis, np.newaxis]) / unit_std[:, np.newaxis,
+                                                                      np.newaxis]
+
+    return data_normalized
 
 def main():
     parser = argparse.ArgumentParser()
@@ -57,12 +107,17 @@ def main():
     parser.add_argument("-d", "--dir", type=str, help="Directory to save results.")
     parser.add_argument("-o", "--output_dim", type=int, help="Dimensions of final layer.")
     parser.add_argument("-l", "--loss_mode", type=str, default='infonce', help="Mode of the loss.")
-    parser.add_argument("-t", "--trials", type=int, default=5, help="Number of trials to average over for generating positive pair.")
+    parser.add_argument("-tc", "--trials_chirp", type=int, default=5,
+                        help="Number of trials to average over for pos pairs chirp.")
+    parser.add_argument("-tb", "--trials_bar", type=int, default=5,
+                        help="Number of trials to average over for pos pairs bar.")
     args = parser.parse_args()
 
     # Load data and create dataset
-    data, labels = load_data()
-    dataset = ContrastiveTrialPairGenerator(data, n_trials_pos_pair=int(args.trials))
+    data_chirp, data_bar, labels = load_data(flatten_bar=True)
+    dataset = ContrastiveTrialPairGenerator(data_chirp, data_bar,
+                                            n_trials_pos_pair_chirp=int(args.trials_chirp),
+                                            n_trials_pos_pair_bar=int(args.trials_bar))
 
     # Set parameters
     model_name = str(args.model_name)
@@ -107,13 +162,14 @@ def main():
     # Saving directory
     current_datetime = datetime.now()
     datetime_string = current_datetime.strftime("%Y%m%d_%H%M%S")
-    file_name = f"{datetime_string}_embd_{model_name}_epochs{n_epochs}_batchsize{batch_size}" \
-                f"_outputdim{output_dim}_run{run}_ntrials{int(args.trials)}"
+    file_name = f"{datetime_string}_embd_{model_name}_epochs{n_epochs}_batchsize{batch_size}"\
+                f"_outputdim{output_dim}_run{run}_ntrialsc{int(args.trials_chirp)}"\
+                f"_ntrialsb{int(args.trials_bar)}_lossmode{args.loss_mode}"
     print(f'Directory: {args.dir}')
     print(f'File name: {file_name}')
     plots_dir = os.path.join(args.dir, "plots")
     os.makedirs(plots_dir, exist_ok=True)
-    models_dir = os.path.join(args.dir, "models")
+    models_dir = args.dir
     os.makedirs(models_dir, exist_ok=True)
 
     # Create DataLoader and initialize model
@@ -125,7 +181,8 @@ def main():
         generator=gen,
         drop_last=True,
     )
-    model = TimeSeriesMLP(input_features=data.shape[2], n_features=output_dim)
+    model = TimeSeriesMLP(input_features=data_chirp.shape[2]+data_bar.shape[2],
+                          n_features=output_dim)
     cne = ContrastiveEmbedding(
         model=model,
         batch_size=batch_size,
@@ -168,6 +225,7 @@ def main():
     filepath = os.path.join(models_dir, f"{file_name}.pkl")
     with open(filepath, "wb") as file:
         pickle.dump(cne, file, pickle.HIGHEST_PROTOCOL)
+        print('Model saved as: ', filepath)
 
     # Save loss plot
     loss_mean_per_epoch = []
@@ -186,7 +244,7 @@ def main():
                 transparent=False)
 
     # Save embeddings
-    dataset_embd = TimeSeriesDataset(data=data)
+    dataset_embd = TimeSeriesDataset(data_chirp=data_chirp, data_bar=data_bar)
     loader_embd = DataLoader(
         dataset_embd,
         shuffle=False,
