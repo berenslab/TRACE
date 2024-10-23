@@ -114,10 +114,11 @@ def main():
     args = parser.parse_args()
 
     # Load data and create dataset
-    data_chirp, data_bar, labels = load_data(flatten_bar=True)
+    data_chirp, data_bar, labels = load_data(flatten_bar=False)
     dataset = ContrastiveTrialPairGenerator(data_chirp, data_bar,
                                             n_trials_pos_pair_chirp=int(args.trials_chirp),
-                                            n_trials_pos_pair_bar=int(args.trials_bar))
+                                            n_trials_pos_pair_bar=int(args.trials_bar),
+                                            data_aug=True)
 
     # Set parameters
     model_name = str(args.model_name)
