@@ -115,10 +115,13 @@ def main():
 
     # Load data and create dataset
     data_chirp, data_bar, labels = load_data(flatten_bar=False)
+    cov_matrix = np.load('/gpfs01/berens/user/lschmors/Code/superior_colliculus/'
+            '20241016_data_augmentations/cov_matrix.npy')
     dataset = ContrastiveTrialPairGenerator(data_chirp, data_bar,
                                             n_trials_pos_pair_chirp=int(args.trials_chirp),
                                             n_trials_pos_pair_bar=int(args.trials_bar),
-                                            data_aug=True)
+                                            data_aug=True,
+                                            cov_matrix=cov_matrix)
 
     # Set parameters
     model_name = str(args.model_name)

@@ -68,16 +68,17 @@ class Noise(object):
     Returns:
         sample_transformed (np.array): sample with added noise
     """
-    def __init__(self, noise_scale=0.3):
+    def __init__(self, noise_scale=0.3, cov_matrix=None):
         self.noise_scale = noise_scale
+        self.cov_matrix = cov_matrix
 
     def __call__(self, sample):
         # TODO: import the covariance matrix in a more elegant way
-        cov_matrix = np.load('/gpfs01/berens/user/lschmors/Code/superior_colliculus'
-                    '/20241016_data_augmentations/cov_matrix.npy')
+        #cov_matrix = np.load('/gpfs01/berens/user/lschmors/Code/superior_colliculus'
+        #            '/20241016_data_augmentations/cov_matrix.npy')
         # Generate Gaussian noise based on the temporal covariance matrix
-        noise = np.random.multivariate_normal(mean=np.zeros(cov_matrix.shape[0]),
-                                              cov=cov_matrix)
+        noise = np.random.multivariate_normal(mean=np.zeros(self.cov_matrix.shape[0]),
+                                              cov=self.cov_matrix)
         # Scale the noise and add to the original sample
         sample_transformed = sample + self.noise_scale * noise
 

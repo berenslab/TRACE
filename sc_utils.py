@@ -10,7 +10,7 @@ from data_aug import AmpJitter, TempJitter, Noise
 
 
 class TimeSeriesDataset(Dataset):
-    def __init__(self, data_chirp, data_bar, labels=None, transform=None):
+    def __init__(self, data_chirp, data_bar, labels=None, transform=None, cov_matrix=None):
         """
         Args:
             data_chirp (np.array):
@@ -29,6 +29,7 @@ class TimeSeriesDataset(Dataset):
         self.data_bar = data_bar
         self.labels = labels
         self.transform = transform
+        self.cov_matrix = cov_matrix
 
     def __len__(self):
         return self.data_chirp.shape[0]
@@ -49,7 +50,7 @@ class ContrastiveTrialPairGenerator(Dataset):
     Each pair is freshly computed by selecting random trials for mean computation.
     """
     def __init__(self, dataset_chirp, dataset_bar, n_trials_pos_pair_chirp=7,
-                 n_trials_pos_pair_bar=5, data_aug=False):
+                 n_trials_pos_pair_bar=5, data_aug=False, cov_matrix=None):
         # Chirp
         self.dataset_chirp = dataset_chirp
         self.num_trials_chirp = dataset_chirp.shape[1]  # number of trials recorded
@@ -62,6 +63,7 @@ class ContrastiveTrialPairGenerator(Dataset):
 
         # Apply data augmentations True/False
         self.data_aug = data_aug
+        self.cov_matrix = cov_matrix
 
     def __len__(self):
         return self.dataset_chirp.shape[0]
@@ -69,7 +71,7 @@ class ContrastiveTrialPairGenerator(Dataset):
     def __getitem__(self, idx):
         if self.data_aug:
             # Use data augmentations to generate positive pair
-            self.transform = get_transforms()
+            self.transform = get_transforms(cov_matrix=self.cov_matrix)
 
             item_chirp = np.mean(self.dataset_chirp[idx, :, :], axis=0)
             item_bar = np.mean(self.dataset_bar[idx, :, :], axis=0)
@@ -140,9 +142,12 @@ class TimeSeriesMLP(nn.Module):
         x = self.fc4(x)
         return x
 
-def get_transforms():
+def get_transforms(cov_matrix):
     """
     Returns a list of data augmentations to be applied to the time series data.
+
+    Args:
+        cov_matrix (np.array): covariance matrix used for the Noise augmentation.
 
     Returns:
         transform (torchvision.transforms.Compose): Composed transformations.
@@ -154,7 +159,7 @@ def get_transforms():
             [
                 transforms.RandomApply([AmpJitter()], p=.7),
                 transforms.RandomApply([TempJitter()], p=.6),
-                transforms.RandomApply([Noise()], p=.5),
+                #transforms.RandomApply([Noise(cov_matrix=cov_matrix)], p=.5),
                 #normalize,
             ]
         )
