@@ -111,10 +111,12 @@ def main():
                         help="Number of trials to average over for pos pairs chirp.")
     parser.add_argument("-tb", "--trials_bar", type=int, default=5,
                         help="Number of trials to average over for pos pairs bar.")
+    parser.add_argument("-fb", "--flatten_bar", type=bool, default=False,
+                        help="Flatten responses 8 directions or use mean across directions.")
     args = parser.parse_args()
 
     # Load data and create dataset
-    data_chirp, data_bar, labels = load_data(flatten_bar=True)
+    data_chirp, data_bar, labels = load_data(flatten_bar=args.flatten_bar)
     dataset = ContrastiveTrialPairGenerator(data_chirp, data_bar,
                                             n_trials_pos_pair_chirp=int(args.trials_chirp),
                                             n_trials_pos_pair_bar=int(args.trials_bar))
@@ -164,7 +166,8 @@ def main():
     datetime_string = current_datetime.strftime("%Y%m%d_%H%M%S")
     file_name = f"{datetime_string}_embd_{model_name}_epochs{n_epochs}_batchsize{batch_size}"\
                 f"_outputdim{output_dim}_run{run}_ntrialsc{int(args.trials_chirp)}"\
-                f"_ntrialsb{int(args.trials_bar)}_lossmode{args.loss_mode}"
+                f"_ntrialsb{int(args.trials_bar)}_flattenbar{str(args.flatten_bar)}" \
+                f"_lossmode{args.loss_mode}"
     print(f'Directory: {args.dir}')
     print(f'File name: {file_name}')
     plots_dir = os.path.join(args.dir, "plots")
