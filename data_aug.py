@@ -60,7 +60,8 @@ class TempJitter(object):
 
 class Noise(object):
     """
-    Add Gaussian noise to the sample based on a temporal covariance matrix.
+    Add Gaussian noise to the sample based on a temporal covariance matrix. Noise samples
+    have been pre-computed np.random.multivariate_normal(mean=np.zeros(cov_matrix.shape[0]), cov=cov_matrix)
 
     Args:
         noise_scale (float): scale of the noise
@@ -68,17 +69,16 @@ class Noise(object):
     Returns:
         sample_transformed (np.array): sample with added noise
     """
-    def __init__(self, noise_scale=0.3, cov_matrix=None):
+    def __init__(self, noise_scale=.5, noise_samples=None):
         self.noise_scale = noise_scale
-        self.cov_matrix = cov_matrix
+        self.noise_samples = noise_samples
 
     def __call__(self, sample):
-        # TODO: import the covariance matrix in a more elegant way
-        #cov_matrix = np.load('/gpfs01/berens/user/lschmors/Code/superior_colliculus'
-        #            '/20241016_data_augmentations/cov_matrix.npy')
         # Generate Gaussian noise based on the temporal covariance matrix
-        noise = np.random.multivariate_normal(mean=np.zeros(self.cov_matrix.shape[0]),
-                                              cov=self.cov_matrix)
+        #noise = np.random.multivariate_normal(mean=np.zeros(self.cov_matrix.shape[0]),
+        #                                      cov=self.cov_matrix)
+        # Randomly select one of the pre-computed noise samples
+        noise = self.noise_samples[np.random.randint(0, self.noise_samples.shape[0]), :]
         # Scale the noise and add to the original sample
         sample_transformed = sample + self.noise_scale * noise
 

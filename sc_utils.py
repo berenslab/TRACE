@@ -10,7 +10,7 @@ from data_aug import AmpJitter, TempJitter, Noise
 
 
 class TimeSeriesDataset(Dataset):
-    def __init__(self, data_chirp, data_bar, labels=None, transform=None, cov_matrix=None):
+    def __init__(self, data_chirp, data_bar, labels=None, transform=None, noise_samples=None):
         """
         Args:
             data_chirp (np.array):
@@ -29,7 +29,7 @@ class TimeSeriesDataset(Dataset):
         self.data_bar = data_bar
         self.labels = labels
         self.transform = transform
-        self.cov_matrix = cov_matrix
+        self.noise_samples = noise_samples
 
     def __len__(self):
         return self.data_chirp.shape[0]
@@ -46,11 +46,26 @@ class TimeSeriesDataset(Dataset):
 
 class ContrastiveTrialPairGenerator(Dataset):
     """
-    Dynamically generates pairs of samples as positive pairs for contrastive learning.
-    Each pair is freshly computed by selecting random trials for mean computation.
+    Generates pairs of samples for contrastive learning.
+    Supports both dynamic trial sampling and data augmentation.
+    For the dynamic trial sampling, each pair is newly computed by selecting random trials
+    for mean computation.
     """
-    def __init__(self, dataset_chirp, dataset_bar, n_trials_pos_pair_chirp=7,
-                 n_trials_pos_pair_bar=5, data_aug=False, cov_matrix=None):
+    def __init__(self, dataset_chirp, dataset_bar,
+                 n_trials_pos_pair_chirp=7,
+                 n_trials_pos_pair_bar=5,
+                 data_aug=False,
+                 noise_samples=None,
+                 ):
+        """
+        Args:
+            dataset_chirp (np.ndarray): Chirp stimulus responses
+            dataset_bar (np.ndarray): Bar stimulus responses
+            n_trials_pos_pair_chirp (int): Trials to average for chirp positive pairs
+            n_trials_pos_pair_bar (int): Trials to average for bar positive pairs
+            data_aug (bool): Whether to use data augmentations
+            noise_samples (np.ndarray): precomputed noise samples based on the
+        """
         # Chirp
         self.dataset_chirp = dataset_chirp
         self.num_trials_chirp = dataset_chirp.shape[1]  # number of trials recorded
@@ -62,8 +77,10 @@ class ContrastiveTrialPairGenerator(Dataset):
         self.ntrials_bar = n_trials_pos_pair_bar
 
         # Apply data augmentations True/False
+        if data_aug:
+            assert noise_samples is not None, 'Please provide noise for noise augmentation'
         self.data_aug = data_aug
-        self.cov_matrix = cov_matrix
+        self.noise_samples = noise_samples
 
     def __len__(self):
         return self.dataset_chirp.shape[0]
@@ -71,7 +88,7 @@ class ContrastiveTrialPairGenerator(Dataset):
     def __getitem__(self, idx):
         if self.data_aug:
             # Use data augmentations to generate positive pair
-            self.transform = get_transforms(cov_matrix=self.cov_matrix)
+            self.transform = get_transforms(noise_samples=self.noise_samples)
 
             item_chirp = np.mean(self.dataset_chirp[idx, :, :], axis=0)
             item_bar = np.mean(self.dataset_bar[idx, :, :], axis=0)
@@ -142,12 +159,13 @@ class TimeSeriesMLP(nn.Module):
         x = self.fc4(x)
         return x
 
-def get_transforms(cov_matrix):
+def get_transforms(noise_samples):
     """
     Returns a list of data augmentations to be applied to the time series data.
 
     Args:
-        cov_matrix (np.array): covariance matrix used for the Noise augmentation.
+        noise_samples (np.array): pre-computed noise samples used for the Noise
+        augmentation. Shape (num_samples, time_steps)
 
     Returns:
         transform (torchvision.transforms.Compose): Composed transformations.
@@ -159,7 +177,7 @@ def get_transforms(cov_matrix):
             [
                 transforms.RandomApply([AmpJitter()], p=.7),
                 transforms.RandomApply([TempJitter()], p=.6),
-                #transforms.RandomApply([Noise(cov_matrix=cov_matrix)], p=.5),
+                transforms.RandomApply([Noise(noise_samples=noise_samples)], p=.5),
                 #normalize,
             ]
         )
