@@ -135,7 +135,7 @@ def main():
     # ContrastiveEmbedding params
     n_epochs = int(args.epochs)
     device = "cuda:0"
-    learning_rate = 0.03 * batch_size / 256
+    learning_rate = 0.15 * batch_size #0.03 * batch_size / 256
     lr_min_factor = 0.0
     momentum = 0.0
     temperature = 0.5
@@ -155,7 +155,7 @@ def main():
     print_freq_epoch = "auto"
     print_freq_iteration = None
     seed = 0
-    loss_aggregation = "sum"
+    loss_aggregation = "mean"
     warmup_epochs = 5
     warmup_lr = 0
     early_exaggeration = True
