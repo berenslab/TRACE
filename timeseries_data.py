@@ -113,15 +113,19 @@ def main():
                         help="Number of trials to average over for pos pairs bar.")
     parser.add_argument("-a", "--augmentations", action="store_true",
                         help="Use common data augmentations instead of partial means.")
+    parser.add_argument("-fb", "--flatten_bar", action="store_true",
+                        help="Flatten responses 8 directions or use mean across directions.")
     args = parser.parse_args()
 
     # Load data and create dataset
-    data_chirp, data_bar, labels = load_data(flatten_bar=False)
+    data_chirp, data_bar, labels = load_data(flatten_bar=args.flatten_bar)
     if args.augmentations:
-        #cov_matrix = np.load('/gpfs01/berens/user/lschmors/Code/superior_colliculus/'
-        #                     '20241016_data_augmentations/cov_matrix.npy')
-        noise_samples = np.load('/gpfs01/berens/user/lschmors/Code/superior_colliculus/'
-                             '20241016_data_augmentations/noise_samples.npy')
+        if args.flatten_bar:
+            noise_samples = np.load('/gpfs01/berens/user/lschmors/Code/superior_colliculus/'
+                                    '20241016_data_augmentations/noise_samples_flattenbarTrue.npy')
+        else:
+            noise_samples = np.load('/gpfs01/berens/user/lschmors/Code/superior_colliculus/'
+                                    '20241016_data_augmentations/noise_samples.npy')
     else:
         noise_samples = None
     dataset = ContrastiveTrialPairGenerator(data_chirp, data_bar,
@@ -175,8 +179,8 @@ def main():
     datetime_string = current_datetime.strftime("%Y%m%d_%H%M%S")
     file_name = f"{datetime_string}_embd_{model_name}_epochs{n_epochs}_batchsize{batch_size}"\
                 f"_outputdim{output_dim}_run{run}_ntrialsc{int(args.trials_chirp)}"\
-                f"_ntrialsb{int(args.trials_bar)}_lossmode{args.loss_mode}_" \
-                f"dataug{args.augmentations}"
+                f"_ntrialsb{int(args.trials_bar)}_lossmode{args.loss_mode}" \
+                f"_flattenbar{str(args.flatten_bar)}_dataug{args.augmentations}"
     print(f'Directory: {args.dir}')
     print(f'File name: {file_name}')
     plots_dir = os.path.join(args.dir, "plots")
