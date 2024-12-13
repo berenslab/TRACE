@@ -12,6 +12,7 @@ from sc_utils import (
     TimeSeriesMLP,
 )
 from timeseries_data import load_data_bc
+from tsimcne.losses import infonce
 
 
 class C4tsimcne(ContrastiveTrialPairGenerator):
@@ -88,13 +89,14 @@ class NeuroDataModule(lightning.LightningDataModule):
 
 def main():
     d1, d2, labels = load_data_bc()
-    data = [d1, d2]
+    data = [d1]  # , d2]
     dm = NeuroDataModule(
         data,
         n_trials_pp=[5, 5],
         batch_size=(bs := 1024),
         num_workers=32,
         persistent_workers=True,
+        drop_last=True,
     )
     mod_neuro = tsimcne.PLtSimCNE(
         backbone=TimeSeriesMLP(
@@ -105,7 +107,7 @@ def main():
         n_epochs=(n := 1000),
         batch_size=bs,
         warmup_epochs=0 if n < 99 else 10,
-        # loss=infonce.InfoNCET(dof=1),
+        loss=infonce.InfoNCET(dof=1),
         dof=1,
         anneal_to_dim=2,
         eval_ann=False,
