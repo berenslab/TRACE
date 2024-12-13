@@ -41,12 +41,6 @@ class TimeSeriesDataset(Dataset):
         return self.datasets[0].shape[0]
 
     def __getitem__(self, idx):
-        sample_chirp = np.mean(
-            self.data_chirp[idx], axis=0
-        )  # Compute mean over trials
-        sample_bar = np.mean(
-            self.data_bar[idx], axis=0
-        )  # Compute mean over trials
         samples = [np.mean(ds[idx], axis=0) for ds in self.datasets]
         sample = np.concatenate(samples)
         if self.transform:
