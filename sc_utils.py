@@ -1,16 +1,25 @@
-import numpy as np
 import random
+import warnings
+
+import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from data_aug import AmpJitter, TempJitter, Noise
+from data_aug import AmpJitter, Noise, TempJitter
 
 
 class TimeSeriesDataset(Dataset):
-    def __init__(self, data_chirp, data_bar, labels=None, transform=None, noise_samples=None):
+    def __init__(
+        self,
+        data_chirp,
+        data_bar,
+        labels=None,
+        transform=None,
+        noise_samples=None,
+    ):
         """
         Args:
             data_chirp (np.array):
@@ -43,6 +52,7 @@ class TimeSeriesDataset(Dataset):
         if self.labels is not None:
             return sample, self.labels[idx]
         return sample
+
 
 class ContrastiveTrialPairGenerator(Dataset):
     """
@@ -138,9 +148,12 @@ class ContrastiveTrialPairGenerator(Dataset):
         """
         all_indices = list(range(num_trials))
         trials_indices1 = random.sample(all_indices, n_pos_trials)
-        remaining_numbers = [num for num in all_indices if num != trials_indices1]
+        remaining_numbers = [
+            num for num in all_indices if num != trials_indices1
+        ]
         trials_indices2 = random.sample(remaining_numbers, n_pos_trials)
         return trials_indices1, trials_indices2
+
 
 class TimeSeriesMLP(nn.Module):
     def __init__(self, input_features, n_features=2):
@@ -159,6 +172,7 @@ class TimeSeriesMLP(nn.Module):
         x = self.fc4(x)
         return x
 
+
 def get_transforms(noise_samples):
     """
     Returns a list of data augmentations to be applied to the time series data.
@@ -172,36 +186,17 @@ def get_transforms(noise_samples):
     """
 
     # TODO: Add normalization?
-    #normalize = transforms.Normalize(mean=mean, std=std)
+    # normalize = transforms.Normalize(mean=mean, std=std)
     transform = transforms.Compose(
-            [
-                transforms.RandomApply([AmpJitter()], p=.7),
-                transforms.RandomApply([TempJitter()], p=.6),
-                transforms.RandomApply([Noise(noise_samples=noise_samples)], p=.5),
-                #normalize,
-            ]
-        )
+        [
+            transforms.RandomApply([AmpJitter()], p=0.7),
+            transforms.RandomApply([TempJitter()], p=0.6),
+            transforms.RandomApply(
+                [Noise(noise_samples=noise_samples)], p=0.5
+            ),
+            # normalize,
+        ]
+    )
     return transform
 
-"""
-class TimeSeriesCNN(nn.Module):
-    def __init__(self, input_channels=1, n_features=128):
-        super(TimeSeriesCNN, self).__init__()
-        self.conv1 = nn.Conv1d(input_channels, 64, kernel_size=5, stride=1, padding=2)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.conv2 = nn.Conv1d(64, 128, kernel_size=5, stride=1, padding=2)
-        self.bn2 = nn.BatchNorm1d(128)
-        # Adjust the input features to the fc1 layer to match the output from the prints
-        self.fc1 = nn.Linear(8320, n_features)  # Adjusted to match flattened size
 
-    def forward(self, x):
-        if x.ndim == 2:
-            x = x.unsqueeze(1)  # Adds a channel dimension if not present
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.max_pool1d(x, kernel_size=2, stride=2)
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.max_pool1d(x, kernel_size=2, stride=2)
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
-        return x
-"""
