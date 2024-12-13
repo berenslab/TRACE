@@ -5,10 +5,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from data_aug import AmpJitter, Noise, TempJitter
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
-
-from data_aug import AmpJitter, Noise, TempJitter
 
 
 class TimeSeriesDataset(Dataset):
@@ -86,11 +85,13 @@ class ContrastiveTrialPairGenerator(Dataset):
         else:
             self.trials = trials
 
-        if isinstance(n_trials_pp, list) and len(n_trials_pp) != len(self.trials):
+        if isinstance(n_trials_pp, list) and len(n_trials_pp) != len(
+            self.trials
+        ):
             warnings.warn(
                 f"Got {len(self.trials)} datasets, but got {len(n_trials_pp)=}"
             )
-            self.n_trials_pp = n_trials_pp[: len(self.trials)]
+        self.n_trials_pp = n_trials_pp[: len(self.trials)]
 
         # self.dataset_chirp = dataset_chirp
         # self.num_trials_chirp = dataset_chirp.shape[
@@ -117,7 +118,10 @@ class ContrastiveTrialPairGenerator(Dataset):
             self.trials_mean = [ds.mean(axis=1) for ds in self.trials]
         else:
             # Use random sub-sample of trials to generate positive pair
-            assert all(n_trial_sample <= ds.shape[1] / 2 for zip(self.trials, self.n_trials_pp)) , (
+            assert all(
+                n_trial_sample <= ds.shape[1] / 2
+                for ds, n_trial_sample in zip(self.trials, self.n_trials_pp)
+            ), (
                 "Not enough trials to average over for generating positive pair. "
                 "Please choose a smaller n_trials_pp"
             )
@@ -125,8 +129,9 @@ class ContrastiveTrialPairGenerator(Dataset):
             # n_time = sum(ds.shape[1] for ds in self.trials)
             # self.sample1 = np.empty(shape=n_time)
             # self.sample2 = np.empty(shape=n_time)
-            self.samples1 = [] * len(self.trials)
-            self.samples2 = [] * len(self.trials)
+            self.samples1 = [[]] * len(self.trials)
+            self.samples2 = [[]] * len(self.trials)
+            # print(f"{len(self.samples1)=}, {len(self.trials)=}")
 
     def __len__(self):
         return self.trials[0].shape[0]
@@ -143,24 +148,23 @@ class ContrastiveTrialPairGenerator(Dataset):
             sample2 = self.transform(item)
         else:
 
-            samples1=[]
-            samples2=[]
+            samples1 = []
+            samples2 = []
             n_prev_feat = 0
-            for i, (ds, n_trial_pp) in enumerate(zip(self.trials, self.n_trials_pp)):
+            for i, (ds, n_trial_pp) in enumerate(
+                zip(self.trials, self.n_trials_pp)
+            ):
+                # print(f"{i=}")
                 # Generate positive pair
                 trial_indices1, trial_indices2 = (
                     self._generate_dynamic_pairs_indices(
                         n_trial_pp, ds.shape[1]
                     )
                 )
-                sample1_ = np.mean(
-                    ds[idx, trial_indices1, :], axis=0
-                )
+                sample1_ = np.mean(ds[idx, trial_indices1, :], axis=0)
                 self.samples1[i] = sample1_
                 # self.sample1[n_prev_feat:sample1_.shape[-1]] = sample1_
-                sample2_ = np.mean(
-                    ds[idx, trial_indices2, :], axis=0
-                )
+                sample2_ = np.mean(ds[idx, trial_indices2, :], axis=0)
                 self.samples2[i] = sample2_
                 # self.sample2[n_prev_feat:sample2_.shape[-1]] = sample2_
                 # n_prev_feat +=
@@ -233,5 +237,3 @@ def get_transforms(noise_samples):
         ]
     )
     return transform
-
-

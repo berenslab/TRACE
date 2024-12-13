@@ -5,13 +5,13 @@ import random
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy
-import seaborn as sns
 import torch
 from cne import ContrastiveEmbedding
 from matplotlib.colors import ListedColormap
@@ -25,6 +25,52 @@ from sc_utils import (
     TimeSeriesDataset,
     TimeSeriesMLP,
 )
+
+
+def load_data_bc(
+    filepath="/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/",
+    trim=True,
+):
+    """
+    Load data for local and global chirp responses.
+
+    Parameters:
+        filepath: path to bar and chrip response data
+        trim: cut off first sec of chirp due to experimental session dependent adaptation phase
+
+    Returns:
+        data_local_chirp_norm: normalized local chirp response data
+        data_global_chirp_norm: normalized global chirp response data
+        labels: functional type
+
+    """
+    # Load local chirp trial responses
+    filepath = Path(filepath)
+    fchirp = np.moveaxis(
+        np.load(
+            filepath / "bio_noisy_simulated_dataset_trials_m0_sd0_vf0.npy"
+        ),
+        1,
+        -1,
+    ).astype("float32")
+    labels = np.load(filepath / "simulated_labels_trials_m0_sd0_vf0.npy")
+
+    len_t = fchirp.shape[2]
+    data_local_chirp, data_global_chirp = (
+        fchirp[:, :, len_t // 2 :],
+        fchirp[:, :, : len_t // 2],
+    )
+
+    # Normalize data
+    data_local_chirp_norm = normalize_data(data_local_chirp)
+    data_global_chirp_norm = normalize_data(data_global_chirp)
+
+    if trim:
+        # Trim first second of chirp
+        data_local_chirp_norm = data_local_chirp_norm[:, :, 9:]
+        data_global_chirp_norm = data_global_chirp_norm[:, :, 9:]
+
+    return data_local_chirp_norm, data_global_chirp_norm, labels
 
 
 def load_data(
@@ -123,7 +169,11 @@ def main():
         "-m", "--model_name", type=str, default="TimeSeriesMLP"
     )
     parser.add_argument(
-        "-r", "--run", type=int, help="Seed for random number generator."
+        "-r",
+        "--run",
+        type=int,
+        help="Seed for random number generator.",
+        default=42,
     )
     parser.add_argument(
         "-e", "--epochs", default=200, type=int, help="Number of epochs."
@@ -132,10 +182,14 @@ def main():
         "-b", "--batch_size", default=64, type=int, help="Batch size."
     )
     parser.add_argument(
-        "-d", "--dir", type=str, help="Directory to save results."
+        "-d", "--dir", type=Path, default="", help="Directory to save results."
     )
     parser.add_argument(
-        "-o", "--output_dim", type=int, help="Dimensions of final layer."
+        "-o",
+        "--output_dim",
+        type=int,
+        help="Dimensions of final layer.",
+        default=2,
     )
     parser.add_argument(
         "-l",
@@ -173,7 +227,11 @@ def main():
     args = parser.parse_args()
 
     # Load data and create dataset
-    data_chirp, data_bar, labels = load_data(flatten_bar=args.flatten_bar)
+    data_chirp, data_bar, labels = load_data_bc(
+        "/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/",
+        # flatten_bar=args.flatten_bar,
+    )
+    data = [data_chirp]  # , data_bar]
     if args.augmentations:
         if args.flatten_bar:
             noise_samples = np.load(
@@ -188,10 +246,8 @@ def main():
     else:
         noise_samples = None
     dataset = ContrastiveTrialPairGenerator(
-        data_chirp,
-        data_bar,
-        n_trials_pos_pair_chirp=int(args.trials_chirp),
-        n_trials_pos_pair_bar=int(args.trials_bar),
+        data,
+        n_trials_pp=[int(args.trials_chirp), int(args.trials_bar)],
         data_aug=args.augmentations,
         noise_samples=noise_samples,
     )
@@ -247,7 +303,7 @@ def main():
     )
     print(f"Directory: {args.dir}")
     print(f"File name: {file_name}")
-    plots_dir = os.path.join(args.dir, "plots")
+    plots_dir = args.dir / "plots"
     os.makedirs(plots_dir, exist_ok=True)
     models_dir = args.dir
     os.makedirs(models_dir, exist_ok=True)
@@ -262,7 +318,7 @@ def main():
         drop_last=True,
     )
     model = TimeSeriesMLP(
-        input_features=data_chirp.shape[2] + data_bar.shape[2],
+        input_features=sum(d.shape[2] for d in data),
         n_features=output_dim,
     )
     cne = ContrastiveEmbedding(
@@ -319,7 +375,6 @@ def main():
     ax.plot(loss_mean_per_epoch)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
-    sns.despine()
     filepath = os.path.join(plots_dir, f"{file_name}_loss_over_epochs.png")
     fig.patch.set_facecolor("white")
     fig.savefig(
@@ -331,7 +386,7 @@ def main():
     )
 
     # Save embeddings
-    dataset_embd = TimeSeriesDataset(data_chirp=data_chirp, data_bar=data_bar)
+    dataset_embd = TimeSeriesDataset(data)
     loader_embd = DataLoader(
         dataset_embd,
         shuffle=False,
@@ -357,14 +412,14 @@ def main():
     embedding = np.array(embedding)
     # Plotting
     n_clusters = 50
-    cmap = ListedColormap(sns.husl_palette(n_clusters).as_hex())
+    # cmap = ListedColormap(sn.shusl_palette(n_clusters).as_hex())
+    cmap = plt.get_cmap("tab10")
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     ax.scatter(embedding[:, 0], embedding[:, 1], c=labels, cmap=cmap, s=5)
     ax.set_xticks([])
     ax.set_xticklabels([])
     ax.set_yticks([])
     ax.set_yticklabels([])
-    sns.despine(bottom=True, left=True)
     filepath = os.path.join(plots_dir, f"{file_name}_embedding.png")
     fig.patch.set_facecolor("white")
     fig.savefig(
