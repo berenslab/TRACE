@@ -206,8 +206,13 @@ def main():
     elif args.dataset_name == "bc":
         d1, labels, type_names = load_data_bc()
         data = [d1]
-        # TODO: precompute noise samples for BC toy data set
-        noise_samples = None
+        if args.augmentations:
+            noise_samples = np.load(
+                "/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/"
+                "noise_samples.npy"
+            )
+        else:
+            noise_samples = None
 
     dm = NeuroDataModule(
         data,
