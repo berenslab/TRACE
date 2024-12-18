@@ -69,8 +69,8 @@ class ContrastiveTrialPairGenerator(Dataset):
         Args:
             dataset_chirp (np.ndarray): Chirp stimulus responses
             dataset_bar (np.ndarray): Bar stimulus responses
-            n_trials_pp_pos_pair_chirp (int): Trials to average for chirp positive pairs
-            n_trials_pp_pos_pair_bar (int): Trials to average for bar positive pairs
+            n_trials_pp (list): Trials to average for chirp positive pairs and for bar
+            positive pairs
             data_aug (bool): Whether to use data augmentations
             noise_samples (np.ndarray): precomputed noise samples based on the covariance matrix
         """

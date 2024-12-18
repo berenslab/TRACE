@@ -46,6 +46,7 @@ def load_data_bc(
     """
     # Load local chirp trial responses
     filepath = Path(filepath)
+    #TODO@Dominic adjust dimensions to [ROIs, trials, time]
     fchirp = np.moveaxis(
         np.load(
             filepath / "bio_noisy_simulated_dataset_trials_m0_sd0_vf0.npy"
@@ -55,25 +56,34 @@ def load_data_bc(
     ).astype("float32")
     labels = np.load(filepath / "simulated_labels_trials_m0_sd0_vf0.npy")
 
-    len_t = fchirp.shape[2]
-    data_local_chirp, data_global_chirp = (
-        fchirp[:, :, len_t // 2 :],
-        fchirp[:, :, : len_t // 2],
-    )
-
     # Normalize data
-    data_local_chirp_norm = normalize_data(data_local_chirp)
-    data_global_chirp_norm = normalize_data(data_global_chirp)
+    data_local_chirp_norm = normalize_data(fchirp)
 
     if trim:
         # Trim first second of chirp
         data_local_chirp_norm = data_local_chirp_norm[:, :, 9:]
-        data_global_chirp_norm = data_global_chirp_norm[:, :, 9:]
 
-    return data_local_chirp_norm, data_global_chirp_norm, labels
+    type_names = [
+        "1",
+        "2",
+        "3a",
+        "3b",
+        "4",
+        "5t",
+        "5o",
+        "5i",
+        "X",
+        "6",
+        "7",
+        "8",
+        "9",
+        "R",
+    ]
+
+    return data_local_chirp_norm, labels, type_names
 
 
-def load_data(
+def load_data_sc(
     filepath="/gpfs01/berens/user/lschmors/Code/superior_colliculus",
     trim=True,
     flatten_bar=False,
@@ -135,7 +145,10 @@ def load_data(
     df_clustered = pd.read_pickle(file_name)
     labels = df_clustered["clusterID_sorted"].values.astype(int)
 
-    return data_chirp_norm, data_bar_norm, labels
+    len_type_names = np.unique(labels).shape[0]
+    type_names = [str(i) for i in range(len_type_names + 1)]
+
+    return data_chirp_norm, data_bar_norm, labels, type_names
 
 
 def normalize_data(data):
@@ -235,13 +248,13 @@ def main():
     if args.augmentations:
         if args.flatten_bar:
             noise_samples = np.load(
-                "/gpfs01/berens/user/lschmors/Code/superior_colliculus/"
-                "20241016_data_augmentations/noise_samples_flattenbarTrue.npy"
+                "/gpfs01/berens/data/data/superior_colliculus/"
+                "noise_samples_flattenbarTrue.npy"
             )
         else:
             noise_samples = np.load(
-                "/gpfs01/berens/user/lschmors/Code/superior_colliculus/"
-                "20241016_data_augmentations/noise_samples.npy"
+                "/gpfs01/berens/data/data/superior_colliculus/"
+                "noise_samples.npy"
             )
     else:
         noise_samples = None
