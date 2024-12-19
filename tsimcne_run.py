@@ -209,7 +209,7 @@ def main():
         if args.augmentations:
             noise_samples = np.load(
                 "/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/"
-                "noise_samples.npy"
+                "noise_samples_local_chirp.npy"
             )
         else:
             noise_samples = None
