@@ -253,6 +253,7 @@ def main():
     # Get embedding
     out = trainer.predict(mod_neuro, datamodule=dm)
     Z = torch.vstack([x[0] for x in out])
+    mod_neuro.embd = Z
 
     # Save model
     model_filepath = os.path.join(models_dir, f"{file_name}.pth")
