@@ -1,3 +1,4 @@
+import pandas as pd
 from pathlib import Path
 
 import argparse
@@ -123,6 +124,29 @@ def main():
         "-b", "--batch_size", default=1024, type=int, help="Batch size."
     )
     parser.add_argument(
+        "-lr",
+        "--learning_rate",
+        type=lambda x: None if x.lower() == 'none' else float(x),
+        default=None,
+        help="Learning rate (float or None).",
+    )
+    parser.add_argument(
+        "-opt"
+        "--optimizer",
+        type=str,
+        choices=['sgd', 'adam', 'adamw'],
+        default='sgd',
+        help="Optimizer type.",
+    )
+    parser.add_argument(
+        "-met"
+        "--metric",
+        type=str,
+        choices=['euclidean', 'cosine', 'gauss'],
+        default='euclidean',
+        help="Optimizer type.",
+    )
+    parser.add_argument(
         "-d", "--dir", type=Path, default="", help="Directory to save results."
     )
     parser.add_argument(
@@ -158,6 +182,10 @@ def main():
     model_name = str(args.model_name)
     torch.manual_seed(args.run)
     num_workers = 32
+    if args.learning_rate is None:
+        lr = 'auto_batch'
+    else:
+        lr = args.learning_rate
     if len(args.n_trials_pp) == 1:
         formatted_n_trials_pp = f"{args.n_trials_pp[0]}"
     else:
@@ -170,6 +198,7 @@ def main():
         f"_embd_{model_name}"
         f"_dataset{args.dataset_name}"
         f"_epochs{args.epochs}"
+        f"_lr{lr}"
         f"_batchsize{args.batch_size}"
         f"_outputdim{args.output_dim}"
         f"_ntrialpp{formatted_n_trials_pp}"
@@ -229,7 +258,7 @@ def main():
     mod_neuro = tsimcne.PLtSimCNE(
         backbone=TimeSeriesMLP(
             input_features=sum(ds.shape[2] for ds in data),
-            n_features=(bbdim := 512),
+            n_features=(bbdim := 2),# 512),
         ),
         backbone_dim=bbdim,
         n_epochs=(n := args.epochs),
@@ -239,6 +268,11 @@ def main():
         dof=1,
         anneal_to_dim=args.output_dim,
         eval_ann=False,
+        #lr=lr,
+        #optimizer_name=args.optimizer,
+        #metric=args.metric,
+        #temperature=0.5,
+
     )
     trainer = lightning.Trainer(
         max_epochs=n, check_val_every_n_epoch=20, log_every_n_steps=5
@@ -253,14 +287,22 @@ def main():
     # Get embedding
     out = trainer.predict(mod_neuro, datamodule=dm)
     Z = torch.vstack([x[0] for x in out])
-    mod_neuro.embd = Z
+
+    # Save embedding
+    embd_filepath = os.path.join(models_dir, f"{file_name}.npy")
+    np.save(embd_filepath, Z)
+
+    # Save loss
+    loss_df = pd.read_csv(os.path.join(mod_neuro.logger.log_dir, 'metrics.csv'))
+    mod_neuro.loss_df = loss_df
 
     # Save model
+    mod_neuro.rng = None
     model_filepath = os.path.join(models_dir, f"{file_name}.pth")
-    torch.save(mod_neuro.state_dict(), model_filepath)
+    torch.save(dict(model=mod_neuro, sd=mod_neuro.state_dict()), model_filepath)
     print(f"Model saved as: {model_filepath}")
 
-    # Plot
+    # Plot embedding
     style_file = Path.home() / "berenslab.mplstyle"
     if style_file.exists():
         plt.style.use(style_file)
@@ -282,7 +324,25 @@ def main():
     # Save figure
     print(Path(plots_dir) / f"{file_name}.png")
     fig.savefig(Path(plots_dir) / f"{file_name}.png")
+    plt.close(fig)
 
+    # Plot loss
+    fig, ax = plt.subplots(1, 1, figsize=(5, 3))
+    loss_by_epoch = mod_neuro.loss_df.groupby('epoch')['loss'].mean()
+    loss_by_epoch_std = mod_neuro.loss_df.groupby('epoch')['loss'].std()
+    ax.plot(loss_by_epoch.index, loss_by_epoch.values, 'k')
+    ax.fill_between(loss_by_epoch.index,
+                    loss_by_epoch.values - loss_by_epoch_std.values,
+                    loss_by_epoch.values + loss_by_epoch_std.values,
+                    facecolor='gray',
+                    edgecolor='none',
+                    alpha=0.5)
+    ax.set_ylabel('Loss')
+    ax.set_xlabel('Epochs')
+    # Save figure
+    print(Path(plots_dir) / f"{file_name}.png")
+    fig.savefig(Path(plots_dir) / f"{file_name}_loss.png")
+    plt.close(fig)
 
 if __name__ == "__main__":
     main()
