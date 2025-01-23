@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from data_aug import AmpJitter, Noise, TempJitter
+from sklearn import neighbors, model_selection, metrics, mixture
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
@@ -231,3 +232,55 @@ def get_transforms(noise_samples):
         ]
     )
     return transform
+
+
+def knn_accuracy(embedding, labels, n_neighbors=15):
+    """
+    Calculate KNN classification accuracy.
+
+    Parameters:
+    - embedding: Feature vectors
+    - labels: Corresponding labels
+    - n_neighbors: Number of neighbors for KNN
+
+    Returns:
+    - Accuracy score of KNN classification
+    """
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = model_selection.train_test_split(
+        embedding, labels, test_size=.2)
+
+    # Create and train KNN classifier
+    knn = neighbors.KNeighborsClassifier(n_neighbors)
+    knn_accuracy = knn.fit(X_train, y_train).score(X_test, y_test)
+
+    # Print and return accuracy
+    print(f'kNN Accuracy: {knn_accuracy:.4f}')
+
+    return knn_accuracy
+
+
+def ari_score(embedding,  true_labels):
+    """
+    Calculate Adjusted Rand Index (ARI) score.
+
+    Parameters:
+    - true_labels: Ground truth labels
+    - predicted_labels: Predicted cluster labels
+
+    Returns:
+    - ARI score
+    """
+    n_clusters = np.unique(true_labels).shape[0]
+    gmm = mixture.GaussianMixture(n_components=n_clusters,
+                                  covariance_type='diag',
+                                  random_state=42)
+    gmm.fit(embedding)
+    labels_predicted = gmm.predict(embedding)
+    ari = metrics.adjusted_rand_score(true_labels, labels_predicted)
+
+    # Print and return ARI score
+    print(f'ARI Score: {ari:.4f}')
+
+    return ari
+

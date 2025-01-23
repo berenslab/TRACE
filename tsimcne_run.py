@@ -134,7 +134,7 @@ def main():
         help="Learning rate (float or None).",
     )
     parser.add_argument(
-        "-opt"
+        "-opt",
         "--optimizer",
         type=str,
         choices=['sgd', 'adam', 'adamw'],
@@ -142,7 +142,7 @@ def main():
         help="Optimizer type.",
     )
     parser.add_argument(
-        "-met"
+        "-met",
         "--metric",
         type=str,
         choices=['euclidean', 'cosine', 'gauss'],
@@ -150,7 +150,11 @@ def main():
         help="Optimizer type.",
     )
     parser.add_argument(
-        "-d", "--dir", type=Path, default="", help="Directory to save results."
+        "-d",
+        "--dir",
+        type=Path,
+        default="",
+        help="Directory to save results."
     )
     parser.add_argument(
         "-o",
@@ -204,13 +208,11 @@ def main():
         f"_lr{lr}"
         f"_batchsize{args.batch_size}"
         f"_outputdim{args.output_dim}"
+        f"_run{args.run}",
         f"_ntrialpp{formatted_n_trials_pp}"
         f"_flattenbar{str(args.flatten_bar)}"
         f"_dataug{args.augmentations}"
     )
-    print(f"Directory: {args.dir}")
-    print(f"File name: {file_name}")
-
     print(f"Directory: {args.dir}")
     print(f"File name: {file_name}")
     plots_dir = args.dir / "plots"
@@ -281,10 +283,10 @@ def main():
         dof=1,
         anneal_to_dim=args.output_dim,
         eval_ann=False,
-        #lr=lr,
-        #optimizer_name=args.optimizer,
-        #metric=args.metric,
-        #temperature=0.5,
+        lr=lr,
+        optimizer_name=args.optimizer,
+        metric=args.metric,
+        temperature=0.5,
 
     )
     trainer = lightning.Trainer(
@@ -305,6 +307,11 @@ def main():
     embd_filepath = os.path.join(models_dir, f"{file_name}.npy")
     np.save(embd_filepath, Z)
 
+    # Evaluate embedding
+    n_neighbors = 15
+    mod_neuro.knn_acc = knn_accuracy(embedding=Z, labels=labels, n_neighbors=n_neighbors)
+    mod_neuro.ari_score = ari_score(embedding=Z, true_labels=labels)
+
     # Save loss
     loss_df = pd.read_csv(os.path.join(mod_neuro.logger.log_dir, 'metrics.csv'))
     mod_neuro.loss_df = loss_df
@@ -314,6 +321,24 @@ def main():
     model_filepath = os.path.join(models_dir, f"{file_name}.pth")
     torch.save(dict(model=mod_neuro, sd=mod_neuro.state_dict()), model_filepath)
     print(f"Model saved as: {model_filepath}")
+
+    # Save metrics
+    save_metrics = pd.DataFrame({
+        'ARI': [mod_neuro.ari_score],
+        'kNN_acc': [mod_neuro.knn_acc],
+        'loss': [mod_neuro.loss_df.groupby('epoch')['loss'].mean().values[-1]]
+    })
+    save_metrics.to_csv(Path(args.dir / "grid_search") / (f"{datetime_string}_{args.dataset_name}"
+                                                        f"_outputdim{args.output_dim}"
+                                                        f"_ntrialpp{formatted_n_trials_pp}"
+                                                        f"_flattenbar{str(args.flatten_bar)}"
+                                                        f"_run{args.run}"
+                                                        f"_dataug{args.augmentations}"
+                                                        f"_batchsize{args.batch_size}"
+                                                        f"_epochs{args.epochs}"
+                                                        f"_lr{mod_neuro.lr}"
+                                                        f".csv"),
+                        index=False)
 
     # Plot embedding
     style_file = Path.home() / "berenslab.mplstyle"
