@@ -11,12 +11,15 @@ import torch
 import tsimcne
 from matplotlib import patheffects as path_effects
 from matplotlib import pyplot as plt
+from matplotlib.colors import ListedColormap
+import seaborn as sns
 from sc_utils import (
     ContrastiveTrialPairGenerator,
     TimeSeriesDataset,
     TimeSeriesMLP,
 )
-from timeseries_data import load_data_bc, load_data_sc
+from timeseries_data import load_data_bc, load_data_sc, load_data_toy
+from sc_utils import knn_accuracy, ari_score
 from tsimcne.losses import infonce
 
 
@@ -242,6 +245,16 @@ def main():
             )
         else:
             noise_samples = None
+    elif args.dataset_name == "toy":
+        d1, labels, type_names = load_data_toy()
+        data = [d1]
+        if args.augmentations:
+            noise_samples = np.load(
+                "/gpfs01/berens/user/lschmors/Code/superior_colliculus"
+                "/20241211_simple_toy_dataset/data/toy_data_noise_samples.npy"
+            )
+        else:
+            noise_samples = None
 
     dm = NeuroDataModule(
         data,
@@ -307,20 +320,24 @@ def main():
     if style_file.exists():
         plt.style.use(style_file)
     fig, ax = plt.subplots(figsize=(3, 3))
-    cmap = plt.get_cmap("tab20")
-    ax.scatter(*Z.T, c=labels, cmap=cmap, alpha=1, s=2)
-    # Add type names
-    def f_pe(c):
-        return [path_effects.withStroke(linewidth=2, foreground=c, alpha=0.5)]
+    # cmap = plt.get_cmap("tab20")
+    cmap = ListedColormap(sns.husl_palette(np.unique(labels).shape[0]).as_hex())
+    if Z.shape[1] == 2:
+        ax.scatter(*Z.T, c=labels, cmap=cmap, alpha=1, s=2)
+        # Add type names
+        #def f_pe(c):
+        #    return [path_effects.withStroke(linewidth=2, foreground=c, alpha=0.5)]
 
-    [
-        ax.text(
-            *np.median(Z[labels == i], axis=0),
-            lbl,
-            path_effects=f_pe(cmap(i)),
-        )
-        for i, lbl in enumerate(type_names)
-    ]
+        #[
+        #    ax.text(
+        #        *np.median(Z[labels == i], axis=0),
+        #        lbl,
+        #        path_effects=f_pe(cmap(i)),
+        #    )
+        #    for i, lbl in enumerate(type_names)
+        #]
+    elif Z.shape[1] > 2:
+        ax.scatter(Z[:,0], Z[:,1], c=labels, cmap=cmap, alpha=1, s=2)
     # Save figure
     print(Path(plots_dir) / f"{file_name}.png")
     fig.savefig(Path(plots_dir) / f"{file_name}.png")

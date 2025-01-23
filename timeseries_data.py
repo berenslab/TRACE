@@ -26,6 +26,36 @@ from sc_utils import (
     TimeSeriesMLP,
 )
 
+def load_data_toy(
+    filepath="/gpfs01/berens/user/lschmors/Code/superior_colliculus/20241211_simple_toy_dataset/data/"
+):
+    """
+    Load toy data.
+
+    Parameters:
+        filepath: path to data
+
+    Returns:
+        data: [ROIs, trials, time]
+        labels: functional type
+        type_names:
+
+    """
+    # Load local chirp trial responses
+    filepath = Path(filepath)
+    data_toy = np.load(
+            filepath / "toy_data.npy"
+        ).astype("float32")
+
+    # Normalize data
+    #data_norm = normalize_data(data_toy)
+
+    labels = np.load(filepath / "toy_data_labels.npy")
+
+    len_type_names = np.unique(labels).shape[0]
+    type_names = [str(i) for i in range(len_type_names + 1)]
+
+    return data_toy, labels, type_names
 
 def load_data_bc(
     filepath="/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/",
