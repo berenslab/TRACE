@@ -17,6 +17,7 @@ from sc_utils import (
     ContrastiveTrialPairGenerator,
     TimeSeriesDataset,
     TimeSeriesMLP,
+    TorchVectorizedContrastiveTrialPairGenerator
 )
 from timeseries_data import load_data_bc, load_data_sc, load_data_toy
 from sc_utils import knn_accuracy, ari_score
@@ -69,19 +70,30 @@ class NeuroDataModule(lightning.LightningDataModule):
         ), torch.tensor(lbl1)
 
     def train_dataloader(self):
-        dataset = C4tsimcne(
-            self.data,
-            self.n_trials_pp,
-            data_aug=self.data_aug,
-            noise_samples=self.noise_samples,
-        )
-        return torch.utils.data.DataLoader(
-            dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
+        #dataset = C4tsimcne(
+        #    self.data,
+        #    self.n_trials_pp,
+        #    data_aug=self.data_aug,
+        #    noise_samples=self.noise_samples,
+        #)
+        #return torch.utils.data.DataLoader(
+        #    dataset,
+        #    batch_size=self.batch_size,
+        #    num_workers=self.num_workers,
+        #    shuffle=True,
+        #    collate_fn=self.collate_fn,
+        #    **self.kwargs,
+        #)
+        return TorchVectorizedContrastiveTrialPairGenerator(
+            trials = self.data,
+            n_trials_pp = self.n_trials_pp,
+            batch_size = self.batch_size,
+            data_aug = False,
+            noise_samples = self.noise_samples,
             shuffle=True,
-            collate_fn=self.collate_fn,
-            **self.kwargs,
+            drop_last = True,
+            seed = 0,
+            device="cuda"
         )
 
     def predict_dataloader(self):
