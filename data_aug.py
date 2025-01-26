@@ -24,9 +24,8 @@ class AmpJitter(object):
 
     def __call__(self, sample):
         amp_jit_value = np.random.uniform(self.lo, self.hi)
-        amp_jit = np.array([amp_jit_value for i in range(sample.shape[0])])
-
-        sample_transformed = (sample * amp_jit).astype('float32')
+        #amp_jit = np.array([amp_jit_value for i in range(sample.shape[0])])
+        sample_transformed = (sample * amp_jit_value).astype('float32')
 
         return sample_transformed
 
@@ -51,9 +50,11 @@ class TempJitter(object):
         # Apply the shift without padding first
         if shift_ >= 0:
             # Positive shift: roll forward
-            sample_transformed = np.roll(sample, int_shift)
+            #sample_transformed = np.roll(sample, int_shift)
+            sample_transformed = np.concatenate([sample[-int_shift:], sample[:-int_shift]])
         else:
             # Negative shift: roll backward and take values from the beginning to the end
+            # todo: Do we really need this separate case? Or could we omit the int_shift step?
             sample_transformed = np.concatenate([sample[int_shift:], sample[:int_shift]])
 
         return sample_transformed.astype('float32')
