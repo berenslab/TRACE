@@ -230,6 +230,8 @@ class TorchVectorizedContrastiveTrialPairGenerator:
                 f"Got {len(self.trials)} datasets, but got {len(n_trials_pp)=}"
             )
         self.n_trials_pp = n_trials_pp[: len(self.trials)]
+        self.device = device
+        self.trials = [torch.from_numpy(t).to(device=self.device, dtype=torch.float32) for t in self.trials]
 
         # self.dataset_chirp = dataset_chirp
         # self.num_trials_chirp = dataset_chirp.shape[
@@ -250,10 +252,10 @@ class TorchVectorizedContrastiveTrialPairGenerator:
                     noise_samples is not None
             ), "Please provide noise for noise augmentation"
         self.data_aug = data_aug
-        self.noise_samples = noise_samples
-
         if self.data_aug:
+            self.noise_samples = torch.from_numpy(noise_samples).to(device=self.device, dtype=torch.float32)
             self.trials_mean = [ds.mean(axis=1) for ds in self.trials]
+            self.transform = get_torch_vectorized_transforms(noise_samples=self.noise_samples)
         else:
             # Use random sub-sample of trials to generate positive pair
             assert all(
@@ -271,8 +273,6 @@ class TorchVectorizedContrastiveTrialPairGenerator:
             self.samples2 = [[]] * len(self.trials)
             # print(f"{len(self.samples1)=}, {len(self.trials)=}")
 
-        self.device = device
-        self.trials = [torch.from_numpy(t).to(device=self.device) for t in self.trials]
 
         self.batch_size = torch.tensor(batch_size, dtype=int).to(self.device)
         self.dataset_len = torch.tensor(self.trials[0].shape[0], device=self.device)
@@ -320,14 +320,11 @@ class TorchVectorizedContrastiveTrialPairGenerator:
 
     def __next__(self):
         # this retrieves full batches
+        batch_idx = self._get_batch_idx()
         if self.data_aug:
-            raise NotImplementedError()
             # Use data augmentations to generate positive pair
-            self.transform = get_transforms(noise_samples=self.noise_samples)
-
-            items = [ds[idx] for ds in self.trials_mean]
-            item = np.concatenate(items)
-
+            items = [ds[batch_idx] for ds in self.trials_mean]
+            item = torch.cat(items, dim=0)
             sample1 = self.transform(item)
             sample2 = self.transform(item)
         else:
@@ -335,7 +332,6 @@ class TorchVectorizedContrastiveTrialPairGenerator:
             samples1 = []
             samples2 = []
             n_prev_feat = 0
-            batch_idx = self._get_batch_idx()
             for i, (ds, n_trial_pp) in enumerate(
                     zip(self.trials, self.n_trials_pp)
             ):
@@ -371,6 +367,88 @@ class TorchVectorizedContrastiveTrialPairGenerator:
         # concatenate and add dummy labels for tsimcne
         return torch.cat([sample1, sample2], dim=0), torch.ones(self.batch_size, device=self.device)
 
+
+class TorchVectorizedAmpJitter(object):
+    """
+    Amplitude jittering of the sample by scaling the amplitude.
+
+    Args:
+        lo (float): lower bound of the scaling factor
+        hi (float): upper bound of the scaling factor
+
+    Returns:
+        sample_transformed (np.array): sample with scaled amplitude
+    """
+    def __init__(self, lo=.7, hi=1.3):
+
+        self.lo = lo
+        self.hi = hi
+
+    def __call__(self, batch):
+        amp_jit_values = torch.rand(batch.shape[0], device=batch.device, dtype=batch.dtype) * (self.hi - self.lo) + self.lo
+        batch_transformed = batch * amp_jit_values.unsqueeze(-1)
+
+        return batch_transformed
+
+class TorchVectorizedTempJitter(object):
+    """
+    Temporal jittering of the sample by shifting the time axis.
+
+    Args:
+        shift_n_bins (int): number of bins to shift the sample
+
+    Returns:
+        sample_transformed (np.array): sample with shifted time axis
+    """
+    def __init__(self, shift_n_bins = 3):
+        self.shift_n_bins = shift_n_bins
+
+    def __call__(self, batch):
+        # Generate the shift
+        shifts_ = ((2 * torch.randint(low=0, high=2, size=(batch.shape[0],), device=batch.device) - 1) * torch.rand(size=(batch.shape[0],), device=batch.device) * self.shift_n_bins)
+        # Calculate integer shift value
+        int_shifts = torch.where(shifts_ >= 0, torch.ceil(shifts_), torch.floor(shifts_)).to(torch.int)
+
+        #Apply the shift without padding first
+        seq_len = batch.size(1)
+
+        # Create an index tensor for the original positions
+        index = torch.arange(seq_len, device=batch.device).repeat(batch.size(0), 1)
+
+        # Compute shifted indices with wrap-around
+        shifted_index = (index - int_shifts.unsqueeze(-1)) % seq_len
+
+        # Gather the values based on the shifted indices
+        rolled_batch = torch.gather(batch, 1, shifted_index)
+        return rolled_batch
+
+
+class TorchVectorizedNoise(object):
+    """
+    Add Gaussian noise to the sample based on a temporal covariance matrix. Noise samples
+    have been pre-computed np.random.multivariate_normal(mean=np.zeros(cov_matrix.shape[0]), cov=cov_matrix)
+
+    Args:
+        noise_scale (float): scale of the noise
+
+    Returns:[
+        sample_transformed (np.array): sample with added noise
+    """
+    def __init__(self, noise_scale=.5, noise_samples=None):
+        self.noise_scale = noise_scale
+        self.noise_samples = noise_samples
+
+    def __call__(self, batch):
+        # Generate Gaussian noise based on the temporal covariance matrix
+
+        # Randomly select one of the pre-computed noise samples
+        noise_idx = torch.randint(0, self.noise_samples.shape[0], device=batch.device, size=(batch.shape[0],))
+        noise = self.noise_samples[noise_idx]
+
+        # Scale the noise and add to the original sample
+        batch_noised = batch + self.noise_scale * noise
+
+        return batch_noised
 
 class TimeSeriesMLP(nn.Module):
     def __init__(self, input_features, n_features=2):
@@ -410,6 +488,32 @@ def get_transforms(noise_samples):
             transforms.RandomApply([TempJitter()], p=0.6),
             transforms.RandomApply(
                 [Noise(noise_samples=noise_samples)], p=0.5
+            ),
+            # normalize,
+        ]
+    )
+    return transform
+
+def get_torch_vectorized_transforms(noise_samples):
+    """
+    Returns a list of data augmentations to be applied to the time series data.
+
+    Args:
+        noise_samples (np.array): pre-computed noise samples used for the Noise
+        augmentation. Shape (num_samples, time_steps)
+
+    Returns:
+        transform (torchvision.transforms.Compose): Composed transformations.
+    """
+
+    # TODO: Add normalization?
+    # normalize = transforms.Normalize(mean=mean, std=std)
+    transform = transforms.Compose(
+        [
+            transforms.RandomApply([TorchVectorizedAmpJitter()], p=0.7),
+            transforms.RandomApply([TorchVectorizedTempJitter()], p=0.6),
+            transforms.RandomApply(
+                [TorchVectorizedNoise(noise_samples=noise_samples)], p=0.5
             ),
             # normalize,
         ]

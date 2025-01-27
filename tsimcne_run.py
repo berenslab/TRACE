@@ -50,6 +50,8 @@ class NeuroDataModule(lightning.LightningDataModule):
         num_workers=16,
         data_aug=False,
         noise_samples=None,
+        device="cuda",
+        seed=0,
         **kwargs,
     ):
         super().__init__()
@@ -59,6 +61,8 @@ class NeuroDataModule(lightning.LightningDataModule):
         self.num_workers = num_workers
         self.data_aug = data_aug
         self.noise_samples = noise_samples
+        self.device = device
+        self.seed = seed
         self.kwargs = kwargs
 
     @staticmethod
@@ -88,12 +92,12 @@ class NeuroDataModule(lightning.LightningDataModule):
             trials = self.data,
             n_trials_pp = self.n_trials_pp,
             batch_size = self.batch_size,
-            data_aug = False,
+            data_aug = self.data_aug,
             noise_samples = self.noise_samples,
             shuffle=True,
             drop_last = True,
-            seed = 0,
-            device="cuda"
+            seed = self.seed,
+            device=self.device
         )
 
     def predict_dataloader(self):
@@ -195,6 +199,13 @@ def main():
         action="store_true",
         help="Flatten responses 8 directions or use mean across directions.",
     )
+    parser.add_argument(
+        "-dev",
+        "--device",
+        type=str,
+        default="cuda",
+        help="Device used for computing positive pairs, either 'cpu' or 'cuda'.",
+    )
     args = parser.parse_args()
 
     # Set parameters
@@ -224,6 +235,7 @@ def main():
         f"_ntrialpp{formatted_n_trials_pp}"
         f"_flattenbar{str(args.flatten_bar)}"
         f"_dataug{args.augmentations}"
+        f"_device{args.device}"
     )
     print(f"Directory: {args.dir}")
     print(f"File name: {file_name}")
@@ -279,6 +291,7 @@ def main():
         num_workers=num_workers,
         persistent_workers=True,
         drop_last=True,
+        device=args.device
     )
 
     # Initialize model
