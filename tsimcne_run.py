@@ -18,7 +18,8 @@ from sc_utils import (
     ContrastiveTrialPairGenerator,
     TimeSeriesDataset,
     TimeSeriesMLP,
-    TimeSeriesProjectionHead
+    TimeSeriesProjectionHead,
+    TorchVectorizedContrastiveTrialPairGenerator,
 )
 from timeseries_data import load_data_bc, load_data_sc, load_data_toy
 from sc_utils import knn_accuracy, ari_score, seconds_to_hms
@@ -51,6 +52,8 @@ class NeuroDataModule(lightning.LightningDataModule):
         num_workers=16,
         data_aug=False,
         noise_samples=None,
+        device="cuda",
+        seed=0,
         **kwargs,
     ):
         super().__init__()
@@ -60,6 +63,8 @@ class NeuroDataModule(lightning.LightningDataModule):
         self.num_workers = num_workers
         self.data_aug = data_aug
         self.noise_samples = noise_samples
+        self.device = device
+        self.seed = seed
         self.kwargs = kwargs
 
     @staticmethod
@@ -71,19 +76,30 @@ class NeuroDataModule(lightning.LightningDataModule):
         ), torch.tensor(lbl1)
 
     def train_dataloader(self):
-        dataset = C4tsimcne(
-            self.data,
-            self.n_trials_pp,
-            data_aug=self.data_aug,
-            noise_samples=self.noise_samples,
-        )
-        return torch.utils.data.DataLoader(
-            dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
+        #dataset = C4tsimcne(
+        #    self.data,
+        #    self.n_trials_pp,
+        #    data_aug=self.data_aug,
+        #    noise_samples=self.noise_samples,
+        #)
+        #return torch.utils.data.DataLoader(
+        #    dataset,
+        #    batch_size=self.batch_size,
+        #    num_workers=self.num_workers,
+        #    shuffle=True,
+        #    collate_fn=self.collate_fn,
+        #    **self.kwargs,
+        #)
+        return TorchVectorizedContrastiveTrialPairGenerator(
+            trials = self.data,
+            n_trials_pp = self.n_trials_pp,
+            batch_size = self.batch_size,
+            data_aug = self.data_aug,
+            noise_samples = self.noise_samples,
             shuffle=True,
-            collate_fn=self.collate_fn,
-            **self.kwargs,
+            drop_last = True,
+            seed = self.seed,
+            device=self.device
         )
 
     def predict_dataloader(self):
@@ -185,6 +201,13 @@ def main():
         action="store_true",
         help="Flatten responses 8 directions or use mean across directions.",
     )
+    parser.add_argument(
+        "-dev",
+        "--device",
+        type=str,
+        default="cuda",
+        help="Device used for computing positive pairs, either 'cpu' or 'cuda'.",
+    )
     args = parser.parse_args()
 
     # Set parameters
@@ -214,6 +237,7 @@ def main():
         f"_ntrialpp{formatted_n_trials_pp}"
         f"_flattenbar{str(args.flatten_bar)}"
         f"_dataug{args.augmentations}"
+        f"_device{args.device}"
     )
     print(f"Directory: {args.dir}")
     print(f"File name: {file_name}")
@@ -269,6 +293,7 @@ def main():
         num_workers=num_workers,
         persistent_workers=True,
         drop_last=True,
+        device=args.device
     )
 
     # Initialize model
@@ -286,6 +311,7 @@ def main():
         warmup_epochs=0 if n < 99 else 10,
         loss=infonce.InfoNCET(dof=1),
         dof=1,
+        anneal_to_dim=args.output_dim,
         eval_ann=False,
         lr=lr,
         optimizer_name=args.optimizer,
@@ -357,6 +383,18 @@ def main():
     cmap = ListedColormap(sns.husl_palette(np.unique(labels).shape[0]).as_hex())
     if Z.shape[1] == 2:
         ax.scatter(*Z.T, c=labels, cmap=cmap, alpha=1, s=2)
+        # Add type names
+        #def f_pe(c):
+        #    return [path_effects.withStroke(linewidth=2, foreground=c, alpha=0.5)]
+
+        #[
+        #    ax.text(
+        #        *np.median(Z[labels == i], axis=0),
+        #        lbl,
+        #        path_effects=f_pe(cmap(i)),
+        #    )
+        #    for i, lbl in enumerate(type_names)
+        #]
     elif Z.shape[1] > 2:
         # Standardize the data
         scaler = sklearn.preprocessing.StandardScaler()
