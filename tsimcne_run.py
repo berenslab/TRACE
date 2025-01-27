@@ -311,7 +311,6 @@ def main():
         warmup_epochs=0 if n < 99 else 10,
         loss=infonce.InfoNCET(dof=1),
         dof=1,
-        anneal_to_dim=args.output_dim,
         eval_ann=False,
         lr=lr,
         optimizer_name=args.optimizer,
