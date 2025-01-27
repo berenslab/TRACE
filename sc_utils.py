@@ -206,6 +206,19 @@ class TimeSeriesMLP(nn.Module):
         x = self.fc4(x)
         return x
 
+class TimeSeriesProjectionHead(nn.Module):
+    def __init__(self, n_input, n_output=2):
+        super().__init__()
+        self.fc1 = nn.Linear(n_input, 1024)
+        self.out = nn.Linear(1024, n_output)
+
+    def forward(self, x):
+        # Flatten the input in case it comes from a conv layer or it's not already flat
+        x = torch.flatten(x, start_dim=1)
+        x = F.relu(self.fc1(x))
+        x = self.out(x)
+        return x
+
 
 def get_transforms(noise_samples):
     """
@@ -284,3 +297,9 @@ def ari_score(embedding,  true_labels):
 
     return ari
 
+
+def seconds_to_hms(seconds):
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"

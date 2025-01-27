@@ -13,13 +13,15 @@ from matplotlib import patheffects as path_effects
 from matplotlib import pyplot as plt
 from matplotlib.colors import ListedColormap
 import seaborn as sns
+import sklearn
 from sc_utils import (
     ContrastiveTrialPairGenerator,
     TimeSeriesDataset,
     TimeSeriesMLP,
+    TimeSeriesProjectionHead
 )
 from timeseries_data import load_data_bc, load_data_sc, load_data_toy
-from sc_utils import knn_accuracy, ari_score
+from sc_utils import knn_accuracy, ari_score, seconds_to_hms
 from tsimcne.losses import infonce
 
 
@@ -208,7 +210,7 @@ def main():
         f"_lr{lr}"
         f"_batchsize{args.batch_size}"
         f"_outputdim{args.output_dim}"
-        f"_run{args.run}",
+        f"_run{args.run}"
         f"_ntrialpp{formatted_n_trials_pp}"
         f"_flattenbar{str(args.flatten_bar)}"
         f"_dataug{args.augmentations}"
@@ -273,15 +275,17 @@ def main():
     mod_neuro = tsimcne.PLtSimCNE(
         backbone=TimeSeriesMLP(
             input_features=sum(ds.shape[2] for ds in data),
-            n_features=(bbdim := 2),# 512),
+            n_features=(bbdim := 128),
         ),
         backbone_dim=bbdim,
+        projection_head=TimeSeriesProjectionHead(n_input=bbdim, n_output=args.output_dim),
+        out_dim=args.output_dim,
+        anneal_to_dim=args.output_dim,
         n_epochs=(n := args.epochs),
         batch_size=bs,
         warmup_epochs=0 if n < 99 else 10,
         loss=infonce.InfoNCET(dof=1),
         dof=1,
-        anneal_to_dim=args.output_dim,
         eval_ann=False,
         lr=lr,
         optimizer_name=args.optimizer,
@@ -296,12 +300,14 @@ def main():
     # Fit model
     start = time.time()
     trainer.fit(mod_neuro, datamodule=dm)
-    mod_neuro.train_time = time.time() - start
-    print(f"Time: {mod_neuro.train_time / 60} mins")
+    train_time = time.time() - start
+    mod_neuro.train_time = seconds_to_hms(train_time)
+    print(f"Training time: {mod_neuro.train_time} (hours:minutes:seconds")
 
     # Get embedding
     out = trainer.predict(mod_neuro, datamodule=dm)
     Z = torch.vstack([x[0] for x in out])
+    print(f"Embedding shape: {Z.shape}")
 
     # Save embedding
     embd_filepath = os.path.join(models_dir, f"{file_name}.npy")
@@ -324,9 +330,11 @@ def main():
 
     # Save metrics
     save_metrics = pd.DataFrame({
+        'datetime_string': [datetime_string],
         'ARI': [mod_neuro.ari_score],
         'kNN_acc': [mod_neuro.knn_acc],
-        'loss': [mod_neuro.loss_df.groupby('epoch')['loss'].mean().values[-1]]
+        'loss': [mod_neuro.loss_df.groupby('epoch')['loss'].mean().values[-1]],
+        'train_time': [mod_neuro.train_time],
     })
     save_metrics.to_csv(Path(args.dir / "grid_search") / (f"{datetime_string}_{args.dataset_name}"
                                                         f"_outputdim{args.output_dim}"
@@ -349,20 +357,15 @@ def main():
     cmap = ListedColormap(sns.husl_palette(np.unique(labels).shape[0]).as_hex())
     if Z.shape[1] == 2:
         ax.scatter(*Z.T, c=labels, cmap=cmap, alpha=1, s=2)
-        # Add type names
-        #def f_pe(c):
-        #    return [path_effects.withStroke(linewidth=2, foreground=c, alpha=0.5)]
-
-        #[
-        #    ax.text(
-        #        *np.median(Z[labels == i], axis=0),
-        #        lbl,
-        #        path_effects=f_pe(cmap(i)),
-        #    )
-        #    for i, lbl in enumerate(type_names)
-        #]
     elif Z.shape[1] > 2:
-        ax.scatter(Z[:,0], Z[:,1], c=labels, cmap=cmap, alpha=1, s=2)
+        # Standardize the data
+        scaler = sklearn.preprocessing.StandardScaler()
+        scaled_data = scaler.fit_transform(Z)
+        # Apply PCA
+        pca = sklearn.decomposition.PCA(n_components=2)
+        X_pca = pca.fit_transform(scaled_data)
+        # Plot
+        ax.scatter(*X_pca.T, c=labels, cmap=cmap, alpha=1, s=2)
     # Save figure
     print(Path(plots_dir) / f"{file_name}.png")
     fig.savefig(Path(plots_dir) / f"{file_name}.png")

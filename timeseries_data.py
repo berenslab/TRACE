@@ -58,7 +58,9 @@ def load_data_toy(
     return data_toy, labels, type_names
 
 def load_data_bc(
-    filepath="/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/",
+    #filepath="/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/",
+    filepath='/gpfs01/berens/user/lschmors/Code/superior_colliculus/Data/BC_toy_data'
+             '/bc_noise_data_2025_01_27/',
     trim=True,
 ):
     """
@@ -76,15 +78,8 @@ def load_data_bc(
     """
     # Load local chirp trial responses
     filepath = Path(filepath)
-    #TODO@Dominic adjust dimensions to [ROIs, trials, time]
-    fchirp = np.moveaxis(
-        np.load(
-            filepath / "bio_noisy_simulated_dataset_trials_m0_sd0_vf0.npy"
-        ),
-        1,
-        -1,
-    ).astype("float32")
-    labels = np.load(filepath / "simulated_labels_trials_m0_sd0_vf0.npy")
+    fchirp = np.load(filepath / "bc_local_chirp_noise_0.npy").astype("float32")
+    labels = np.load(filepath / "bc_local_chirp_noise_0_labels.npy")
 
     # Normalize data
     data_local_chirp_norm = normalize_data(fchirp)
@@ -172,11 +167,13 @@ def load_data_sc(
     file_name = (
         filepath + "/20240207_tSNE/data/20240207_df_clusterd_identified.pkl"
     )
-    df_clustered = pd.read_pickle(file_name)
-    labels = df_clustered["clusterID_sorted"].values.astype(int)
+    #df_clustered = pd.read_pickle(file_name)
+    #labels = df_clustered["clusterID_sorted"].values.astype(int)
+    labels = np.load("/gpfs01/berens/data/data/superior_colliculus/labels_bar.npy")
 
-    len_type_names = np.unique(labels).shape[0]
-    type_names = [str(i) for i in range(len_type_names + 1)]
+    #len_type_names = np.unique(labels).shape[0]
+    #type_names = [str(i) for i in range(len_type_names + 1)]
+    type_names = ['OFF', 'ON-OFF', 'ON', 'Sbc']
 
     return data_chirp_norm, data_bar_norm, labels, type_names
 
