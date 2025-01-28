@@ -169,7 +169,7 @@ def load_data_sc(
     )
     #df_clustered = pd.read_pickle(file_name)
     #labels = df_clustered["clusterID_sorted"].values.astype(int)
-    labels = np.load("/labels_bar.npy")
+    labels = np.load(filepath + "/labels_bar.npy")
 
     #len_type_names = np.unique(labels).shape[0]
     #type_names = [str(i) for i in range(len_type_names + 1)]
