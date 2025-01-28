@@ -396,8 +396,9 @@ def main():
         #]
     elif Z.shape[1] > 2:
         # Standardize the data
-        scaler = sklearn.preprocessing.StandardScaler()
-        scaled_data = scaler.fit_transform(Z)
+        #scaler = sklearn.preprocessing.StandardScaler()
+        #scaled_data = scaler.fit_transform(Z)
+        scaled_data = sklearn.preprocessing.normalize(Z)
         # Apply PCA
         pca = sklearn.decomposition.PCA(n_components=2)
         X_pca = pca.fit_transform(scaled_data)
