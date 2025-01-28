@@ -553,7 +553,7 @@ def knn_accuracy(embedding, labels, n_neighbors=15):
     return knn_accuracy
 
 
-def ari_score(embedding,  true_labels):
+def ari_score(embedding,  true_labels, n_clusters=None):
     """
     Calculate Adjusted Rand Index (ARI) score.
 
@@ -564,7 +564,9 @@ def ari_score(embedding,  true_labels):
     Returns:
     - ARI score
     """
-    n_clusters = np.unique(true_labels).shape[0]
+    if n_clusters is None:
+        n_clusters = np.unique(true_labels).shape[0]
+
     gmm = mixture.GaussianMixture(n_components=n_clusters,
                                   covariance_type='diag',
                                   random_state=42)
