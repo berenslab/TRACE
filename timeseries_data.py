@@ -109,7 +109,7 @@ def load_data_bc(
 
 
 def load_data_sc(
-    filepath="/gpfs01/berens/user/lschmors/Code/superior_colliculus",
+    filepath="/gpfs01/berens/data/data/superior_colliculus",
     trim=True,
     flatten_bar=False,
 ):
@@ -128,7 +128,7 @@ def load_data_sc(
 
     """
     # Load chirp trial responses
-    file_name = filepath + "/Data/retinal_axons/chirp_trials.h5"
+    file_name = filepath + "/chirp_trials.h5"
     with h5py.File(file_name, "r") as file:
         # Check if the dataset exists
         if "chirp_trials" in file:
@@ -137,7 +137,7 @@ def load_data_sc(
             raise ValueError("Dataset 'chirp_trials' not found in file.")
 
     # Load bar trial responses
-    file_name_bar = filepath + "/Data/retinal_axons/bar_trials.h5"
+    file_name_bar = filepath + "/bar_trials.h5"
     with h5py.File(file_name_bar, "r") as file:
         # Check if the dataset exists
         if "bar_trials" in file:
@@ -165,11 +165,11 @@ def load_data_sc(
 
     # Load labels
     file_name = (
-        filepath + "/20240207_tSNE/data/20240207_df_clusterd_identified.pkl"
+        filepath + "/20240207_df_clusterd_identified.pkl"
     )
     #df_clustered = pd.read_pickle(file_name)
     #labels = df_clustered["clusterID_sorted"].values.astype(int)
-    labels = np.load("/gpfs01/berens/data/data/superior_colliculus/labels_bar.npy")
+    labels = np.load("/labels_bar.npy")
 
     #len_type_names = np.unique(labels).shape[0]
     #type_names = [str(i) for i in range(len_type_names + 1)]
