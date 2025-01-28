@@ -326,8 +326,8 @@ def main():
     start = time.time()
     trainer.fit(mod_neuro, datamodule=dm)
     train_time = time.time() - start
-    mod_neuro.train_time = seconds_to_hms(train_time)
-    print(f"Training time: {mod_neuro.train_time} (hours:minutes:seconds")
+    mod_neuro.train_time = train_time
+    print(f"Training time: {mod_neuro.train_time:.2f} sec")
 
     # Get embedding
     out = trainer.predict(mod_neuro, datamodule=dm)
