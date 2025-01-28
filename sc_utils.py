@@ -336,7 +336,7 @@ class TorchVectorizedContrastiveTrialPairGenerator:
 
                 # Fast way of creating indices for the trials in the partial means. Random sample and reorder for
                 # permuted trial indices
-                rand_vals = torch.rand(self.batch_size, self.n_trials, device=self.device)
+                rand_vals = torch.rand(self.batch_size, ds.shape[1], device=self.device)
                 shuffled_trial_indices = torch.argsort(rand_vals, dim=1)
 
                 # Split shuffled indices for first and second partial mean
