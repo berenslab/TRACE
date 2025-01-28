@@ -328,18 +328,11 @@ class TorchVectorizedContrastiveTrialPairGenerator:
             sample1 = self.transform(item)
             sample2 = self.transform(item)
         else:
-
-            samples1 = []
-            samples2 = []
-            n_prev_feat = 0
             for i, (ds, n_trial_pp) in enumerate(
                     zip(self.trials, self.n_trials_pp)
             ):
                 # print(f"{i=}")
                 # Generate positive pair
-                # Create and shuffle indices
-                # stacked_trial_idx = torch.tile(torch.arange(self.n_trials).unsqueeze(0), (self.batch_size, 1))
-                # shuffled_trial_indices = torch.stack([torch.randperm(self.n_trials, device=self.device) for _ in range(self.batch_size)])
 
                 # Fast way of creating indices for the trials in the partial means. Random sample and reorder for
                 # permuted trial indices
@@ -360,9 +353,9 @@ class TorchVectorizedContrastiveTrialPairGenerator:
 
                 self.samples1[i] = sample1_
                 self.samples2[i] = sample2_
+            sample1 = torch.cat(self.samples1, dim=-1)
+            sample2 = torch.cat(self.samples2, dim=-1)
 
-            sample1 = torch.cat(self.samples1)
-            sample2 = torch.cat(self.samples2)
 
         # concatenate and add dummy labels for tsimcne
         return torch.cat([sample1, sample2], dim=0), torch.ones(self.batch_size, device=self.device)
