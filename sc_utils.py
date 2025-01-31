@@ -324,7 +324,8 @@ class TorchVectorizedContrastiveTrialPairGenerator:
         if self.data_aug:
             # Use data augmentations to generate positive pair
             items = [ds[batch_idx] for ds in self.trials_mean]
-            item = torch.cat(items, dim=0)
+            item = torch.cat(items, dim=-1)
+
             sample1 = self.transform(item)
             sample2 = self.transform(item)
         else:
