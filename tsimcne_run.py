@@ -9,7 +9,6 @@ import os
 import time
 import torch
 import tsimcne
-from matplotlib import patheffects as path_effects
 from matplotlib import pyplot as plt
 from matplotlib.colors import ListedColormap
 import seaborn as sns
@@ -378,30 +377,13 @@ def main():
     if style_file.exists():
         plt.style.use(style_file)
     fig, ax = plt.subplots(figsize=(3, 3))
-    # cmap = plt.get_cmap("tab20")
     cmap = ListedColormap(sns.husl_palette(np.unique(labels).shape[0]).as_hex())
     if Z.shape[1] == 2:
         ax.scatter(*Z.T, c=labels, cmap=cmap, alpha=1, s=2)
-        # Add type names
-        #def f_pe(c):
-        #    return [path_effects.withStroke(linewidth=2, foreground=c, alpha=0.5)]
-
-        #[
-        #    ax.text(
-        #        *np.median(Z[labels == i], axis=0),
-        #        lbl,
-        #        path_effects=f_pe(cmap(i)),
-        #    )
-        #    for i, lbl in enumerate(type_names)
-        #]
     elif Z.shape[1] > 2:
-        # Standardize the data
-        #scaler = sklearn.preprocessing.StandardScaler()
-        #scaled_data = scaler.fit_transform(Z)
-        scaled_data = sklearn.preprocessing.normalize(Z)
         # Apply PCA
         pca = sklearn.decomposition.PCA(n_components=2)
-        X_pca = pca.fit_transform(scaled_data)
+        X_pca = pca.fit_transform(Z)
         # Plot
         ax.scatter(*X_pca.T, c=labels, cmap=cmap, alpha=1, s=2)
     # Save figure

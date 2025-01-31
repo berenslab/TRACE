@@ -41,14 +41,10 @@ def load_data_toy(
         type_names:
 
     """
-    # Load local chirp trial responses
     filepath = Path(filepath)
     data_toy = np.load(
             filepath / "toy_data.npy"
         ).astype("float32")
-
-    # Normalize data
-    #data_norm = normalize_data(data_toy)
 
     labels = np.load(filepath / "toy_data_labels.npy")
 
