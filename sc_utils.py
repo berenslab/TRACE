@@ -88,19 +88,6 @@ class ContrastiveTrialPairGenerator(Dataset):
             )
         self.n_trials_pp = n_trials_pp[: len(self.trials)]
 
-        # self.dataset_chirp = dataset_chirp
-        # self.num_trials_chirp = dataset_chirp.shape[
-        #     1
-        # ]  # number of trials recorded
-        # self.ntrials_chirp = (
-        #     n_trials_pos_pair_chirp  # trials to average over for pos. pair
-        # )
-
-        # # Moving bar
-        # self.dataset_bar = dataset_bar
-        # self.num_trials_bar = dataset_bar.shape[1]
-        # self.ntrials_bar = n_trials_pos_pair_bar
-
         # Apply data augmentations True/False
         if data_aug:
             assert (
@@ -120,13 +107,8 @@ class ContrastiveTrialPairGenerator(Dataset):
                 "Not enough trials to average over for generating positive pair. "
                 "Please choose a smaller n_trials_pp"
             )
-
-            # n_time = sum(ds.shape[1] for ds in self.trials)
-            # self.sample1 = np.empty(shape=n_time)
-            # self.sample2 = np.empty(shape=n_time)
             self.samples1 = [[]] * len(self.trials)
             self.samples2 = [[]] * len(self.trials)
-            # print(f"{len(self.samples1)=}, {len(self.trials)=}")
 
     def __len__(self):
         return self.trials[0].shape[0]
@@ -142,14 +124,9 @@ class ContrastiveTrialPairGenerator(Dataset):
             sample1 = self.transform(item)
             sample2 = self.transform(item)
         else:
-
-            samples1 = []
-            samples2 = []
-            n_prev_feat = 0
             for i, (ds, n_trial_pp) in enumerate(
                 zip(self.trials, self.n_trials_pp)
             ):
-                # print(f"{i=}")
                 # Generate positive pair
                 trial_indices1, trial_indices2 = (
                     self._generate_dynamic_pairs_indices(
@@ -158,11 +135,8 @@ class ContrastiveTrialPairGenerator(Dataset):
                 )
                 sample1_ = np.mean(ds[idx, trial_indices1, :], axis=0)
                 self.samples1[i] = sample1_
-                # self.sample1[n_prev_feat:sample1_.shape[-1]] = sample1_
                 sample2_ = np.mean(ds[idx, trial_indices2, :], axis=0)
                 self.samples2[i] = sample2_
-                # self.sample2[n_prev_feat:sample2_.shape[-1]] = sample2_
-                # n_prev_feat +=
             sample1 = np.concat(self.samples1)
             sample2 = np.concat(self.samples2)
 
@@ -232,19 +206,6 @@ class TorchVectorizedContrastiveTrialPairGenerator:
         self.n_trials_pp = n_trials_pp[: len(self.trials)]
         self.device = device
         self.trials = [torch.from_numpy(t).to(device=self.device, dtype=torch.float32) for t in self.trials]
-
-        # self.dataset_chirp = dataset_chirp
-        # self.num_trials_chirp = dataset_chirp.shape[
-        #     1
-        # ]  # number of trials recorded
-        # self.ntrials_chirp = (
-        #     n_trials_pos_pair_chirp  # trials to average over for pos. pair
-        # )
-
-        # # Moving bar
-        # self.dataset_bar = dataset_bar
-        # self.num_trials_bar = dataset_bar.shape[1]
-        # self.ntrials_bar = n_trials_pos_pair_bar
 
         # Apply data augmentations True/False
         if data_aug:
@@ -579,9 +540,3 @@ def ari_score(embedding,  true_labels, n_clusters=None):
 
     return ari
 
-
-def seconds_to_hms(seconds):
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
