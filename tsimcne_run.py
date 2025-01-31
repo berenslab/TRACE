@@ -21,7 +21,7 @@ from sc_utils import (
     TorchVectorizedContrastiveTrialPairGenerator,
 )
 from timeseries_data import load_data_bc, load_data_sc, load_data_toy
-from sc_utils import knn_accuracy, ari_score, seconds_to_hms
+from sc_utils import knn_accuracy, ari_score
 from tsimcne.losses import infonce
 
 

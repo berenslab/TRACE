@@ -1,30 +1,10 @@
-import argparse
-import os
-import pickle
-import random
 import sys
-import time
-from datetime import datetime
 from pathlib import Path
-
 import h5py
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import scipy
-import torch
-from cne import ContrastiveEmbedding
-from matplotlib.colors import ListedColormap
-from torch.utils.data import DataLoader
 
 sys.path.append(
     "/gpfs01/berens/user/lschmors/Code/superior_colliculus/cne_timeseries/"
-)
-from sc_utils import (
-    ContrastiveTrialPairGenerator,
-    TimeSeriesDataset,
-    TimeSeriesMLP,
-)
 
 def load_data_toy(
     filepath="/gpfs01/berens/user/lschmors/Code/superior_colliculus/20241211_simple_toy_dataset/data/"
