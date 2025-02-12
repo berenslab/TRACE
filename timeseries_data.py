@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 
 sys.path.append(
-    "/gpfs01/berens/user/lschmors/Code/superior_colliculus/cne_timeseries/"
+    "/gpfs01/euler/User/dgonschorek/projects/_3_Postdoc/All_RGCs/contrastive_learning_neuro")
 
 def load_data_toy(
     filepath="/gpfs01/berens/user/lschmors/Code/superior_colliculus/20241211_simple_toy_dataset/data/"
@@ -35,8 +35,7 @@ def load_data_toy(
 
 def load_data_bc(
     #filepath="/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/",
-    filepath='/gpfs01/berens/user/lschmors/Code/superior_colliculus/Data/BC_toy_data'
-             '/bc_noise_data_2025_01_27/',
+    filepath='/gpfs01/euler/User/dgonschorek/projects/_3_Postdoc/TRACE_Contrastive_Learning/TRACE/data/BC',
     trim=True,
 ):
     """
@@ -85,7 +84,7 @@ def load_data_bc(
 
 
 def load_data_sc(
-    filepath="/gpfs01/berens/data/data/superior_colliculus",
+    filepath="/gpfs01/euler/User/dgonschorek/projects/_3_Postdoc/All_RGCs/data/TRACE/SC",
     trim=True,
     flatten_bar=False,
 ):
@@ -145,13 +144,72 @@ def load_data_sc(
     )
     #df_clustered = pd.read_pickle(file_name)
     #labels = df_clustered["clusterID_sorted"].values.astype(int)
-    labels = np.load(filepath + "/labels_bar.npy")
+    #labels = np.load(filepath + "/labels_bar.npy")
 
     #len_type_names = np.unique(labels).shape[0]
     #type_names = [str(i) for i in range(len_type_names + 1)]
-    type_names = ['OFF', 'ON-OFF', 'ON', 'Sbc']
+    #type_names = ['OFF', 'ON-OFF', 'ON', 'Sbc']
 
-    return data_chirp_norm, data_bar_norm, labels, type_names
+    #return data_chirp_norm, data_bar_norm, labels, type_names
+    return data_chirp_norm, data_bar_norm#, labels, type_names
+
+def load_data_rgc(filepath="/gpfs01/euler/User/dgonschorek/projects/_3_Postdoc/All_RGCs/data/TRACE"):
+    """
+    Load data for chirp responses and bar responses.
+
+    Parameters:
+        filepath: path to bar and chrip response data
+
+    Returns:
+        data_chirp_norm: normalized chirp response data
+        data_bar_norm: normalized bar response data
+        labels: functional type
+
+    """
+    # Load chirp trial responses
+    file_name = filepath + "/chirp_trials.h5"
+    with h5py.File(file_name, "r") as file:
+        # Check if the dataset exists
+        if "chirp_trials" in file:
+            data_chirp = file["chirp_trials"][:]  # Shape: (ROIs, trials, time)
+        else:
+            raise ValueError("Dataset 'chirp_trials' not found in file.")
+
+    # Load bar trial responses
+    file_name_bar = filepath + "/bar_trials.h5"
+    with h5py.File(file_name_bar, "r") as file:
+        # Check if the dataset exists
+        if "bar_trials" in file:
+            data_bar = file["bar_trials"][:]  # Shape: (ROIs, trials, time)
+        else:
+            raise ValueError("Dataset 'bar_trials' not found in file.")
+    #if flatten_bar == False:
+        # Get temporal response only
+    #    data_bar_non_norm = np.mean(data_bar, axis=2)  # [ROIs, trials, 2sec]
+    #else:
+    #data_bar_non_norm = data_bar.reshape(
+    #        [
+    #            data_bar.shape[0],
+    #            data_bar.shape[1],
+    #            data_bar.shape[2] * data_bar.shape[3],
+    #        ]
+    #    )  # [ROIs, trials, 8*2sec]
+    # Normalize data
+    data_chirp_norm = normalize_data(data_chirp)
+    data_bar_norm = normalize_data(data_bar)
+
+    #df_clustered = pd.read_pickle(file_name)
+    #labels = df_clustered["clusterID_sorted"].values.astype(int)
+    labels = np.load(filepath + "/labels_rgc.npy")
+
+    #len_type_names = np.unique(labels).shape[0]
+    #type_names = [str(i) for i in range(len_type_names + 1)]
+    #type_names = ['OFF', 'ON-OFF', 'ON', 'Sbc']
+
+    #return data_chirp_norm, data_bar_norm, labels#, type_names
+    return data_chirp_norm, labels#, type_names
+
+
 
 
 def normalize_data(data):
@@ -177,4 +235,3 @@ def normalize_data(data):
     ]
 
     return data_normalized
-

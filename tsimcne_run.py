@@ -20,7 +20,7 @@ from sc_utils import (
     TimeSeriesProjectionHead,
     TorchVectorizedContrastiveTrialPairGenerator,
 )
-from timeseries_data import load_data_bc, load_data_sc, load_data_toy
+from timeseries_data import load_data_bc, load_data_sc, load_data_toy, load_data_rgc
 from sc_utils import knn_accuracy, ari_score
 from tsimcne.losses import infonce
 
@@ -247,7 +247,8 @@ def main():
 
     # Load data
     if args.dataset_name == "sc":
-        data_chirp, data_bar, labels, type_names = load_data_sc(flatten_bar=args.flatten_bar)
+        #data_chirp, data_bar, labels, type_names = load_data_sc(flatten_bar=args.flatten_bar)
+        data_chirp, data_bar = load_data_sc(flatten_bar=args.flatten_bar)
         data = [data_chirp, data_bar]
         if args.augmentations:
             if args.flatten_bar:
@@ -262,16 +263,36 @@ def main():
                 )
         else:
             noise_samples = None
+    
     elif args.dataset_name == "bc":
         d1, labels, type_names = load_data_bc()
         data = [d1]
         if args.augmentations:
             noise_samples = np.load(
-                "/gpfs01/berens/data/data/BC_Franke2017_simulated_trials/"
+                "/gpfs01/euler/User/dgonschorek/projects/_3_Postdoc/TRACE_Contrastive_Learning/TRACE/data/BC/"
                 "noise_samples_local_chirp.npy"
             )
         else:
             noise_samples = None
+    
+    elif args.dataset_name == "rgc":
+        #data_chirp, data_bar, labels = load_data_rgc()
+        #data = [data_chirp, data_bar]
+        data_chirp, labels = load_data_rgc()
+        data_chirp = data_chirp.astype(np.float32)
+        data = [data_chirp]
+        if args.augmentations:
+            #noise_samples = np.load(
+            #    "/gpfs01/euler/User/dgonschorek/projects/_3_Postdoc/All_RGCs/data/TRACE/"
+            #    "noise_samples_rgc.npy"
+            #)
+            noise_samples = np.load(
+                "/gpfs01/euler/User/dgonschorek/projects/_3_Postdoc/All_RGCs/data/TRACE/"
+                "noise_samples_rgc_chirp.npy"
+            )
+        else:
+            noise_samples = None
+        
     elif args.dataset_name == "toy":
         d1, labels, type_names = load_data_toy()
         data = [d1]
@@ -317,6 +338,7 @@ def main():
         temperature=0.5,
 
     )
+
     trainer = lightning.Trainer(
         max_epochs=n, check_val_every_n_epoch=20, log_every_n_steps=5
     )
