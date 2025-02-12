@@ -5,6 +5,7 @@ import numpy as np
 
 sys.path.append(
     "/gpfs01/berens/user/lschmors/Code/superior_colliculus/cne_timeseries/"
+)
 
 def load_data_toy(
     filepath="/gpfs01/berens/user/lschmors/Code/superior_colliculus/20241211_simple_toy_dataset/data/"

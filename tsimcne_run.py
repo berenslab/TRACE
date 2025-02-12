@@ -75,31 +75,32 @@ class NeuroDataModule(lightning.LightningDataModule):
         ), torch.tensor(lbl1)
 
     def train_dataloader(self):
-        #dataset = C4tsimcne(
-        #    self.data,
-        #    self.n_trials_pp,
-        #    data_aug=self.data_aug,
-        #    noise_samples=self.noise_samples,
-        #)
-        #return torch.utils.data.DataLoader(
-        #    dataset,
-        #    batch_size=self.batch_size,
-        #    num_workers=self.num_workers,
-        #    shuffle=True,
-        #    collate_fn=self.collate_fn,
-        #    **self.kwargs,
-        #)
-        return TorchVectorizedContrastiveTrialPairGenerator(
-            trials = self.data,
-            n_trials_pp = self.n_trials_pp,
-            batch_size = self.batch_size,
-            data_aug = self.data_aug,
-            noise_samples = self.noise_samples,
-            shuffle=True,
-            drop_last = True,
-            seed = self.seed,
-            device=self.device
+        # Uncomment for non-vectorized version
+        dataset = C4tsimcne(
+            self.data,
+            self.n_trials_pp,
+            data_aug=self.data_aug,
+            noise_samples=self.noise_samples,
         )
+        return torch.utils.data.DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=True,
+            collate_fn=self.collate_fn,
+            **self.kwargs,
+        )
+        #return TorchVectorizedContrastiveTrialPairGenerator(
+        #    trials = self.data,
+        #    n_trials_pp = self.n_trials_pp,
+        #    batch_size = self.batch_size,
+        #    data_aug = self.data_aug,
+        #    noise_samples = self.noise_samples,
+        #    shuffle=True,
+        #    drop_last = True,
+        #    seed = self.seed,
+        #    device=self.device
+        #)
 
     def predict_dataloader(self):
         kwargs = self.kwargs.copy()
