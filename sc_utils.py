@@ -540,3 +540,42 @@ def ari_score(embedding,  true_labels, n_clusters=None):
 
     return ari
 
+    def compute_discriminability(X_in, labels, class1=1, class2=2):
+        """
+        Compute a simple discriminability measure between two classes in a PCA-reduced dataset.
+
+        Parameters:
+        X_pca : np.ndarray
+            The PCA-transformed data (samples x features).
+        labels : np.ndarray
+            Array of class labels corresponding to rows in X_pca.
+        class1 : int
+            Label for the first class.
+        class2 : int
+            Label for the second class.
+
+        Returns:
+        float
+            The discriminability measure.
+        """
+        # Extract data for each class
+        X_class1 = X_in[labels == class1]
+        X_class2 = X_in[labels == class2]
+
+        # Calculate means per feature
+        mu1 = np.mean(X_class1, axis=0)
+        mu2 = np.mean(X_class2, axis=0)
+
+        # Calculate standard deviations per feature
+        std1 = np.std(X_class1, axis=0)
+        std2 = np.std(X_class2, axis=0)
+
+        # Get difference
+        pooled_std = 0.5 * (std1 + std2)
+        diff = mu1 - mu2
+        normalized_diff = diff / pooled_std
+
+        # Normalize
+        discrim = np.linalg.norm(normalized_diff)
+
+        return discrim
