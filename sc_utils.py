@@ -540,7 +540,7 @@ def ari_score(embedding,  true_labels, n_clusters=None):
 
     return ari
 
-    def compute_discriminability(X_in, labels, class1=1, class2=2):
+def compute_discriminability(X_in, labels, class1=1, class2=2):
         """
         Compute a simple discriminability measure between two classes in a PCA-reduced dataset.
 
