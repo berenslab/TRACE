@@ -14,7 +14,7 @@ basenoise_SDs = [1, 2, 4, 6, 10, 15, 20, 24, 38, 60]
 # hyperparameters are n_epochs, batch_size, similarity type, and embedding dimension
 other_hparams = [
     [None, 16, "cosine", 320], # TS2Vec + PCA (without the PCA step)
-    [1000, 768, "cauchy", 2], # TRACE + TS2Vec
+    [100, 512, "cauchy", 2] # TRACE + TS2Vec
 ]
 
 seeds = [0, 1, 2]
