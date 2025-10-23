@@ -7,8 +7,9 @@ sys.path.append(
     "/gpfs01/berens/user/lschmors/Code/superior_colliculus/cne_timeseries/"
 )
 
-def load_data_toy(
-    filepath="/gpfs01/berens/user/lschmors/Code/superior_colliculus/20241211_simple_toy_dataset/data/"
+def load_data_toy(filename_data, filename_labels,
+    #filepath="/gpfs01/berens/user/lschmors/Code/superior_colliculus/20241211_simple_toy_dataset/data/"
+    #filepath="/gpfs01/berens/data/data/superior_colliculus/toy_data/"
 ):
     """
     Load toy data.
@@ -17,17 +18,14 @@ def load_data_toy(
         filepath: path to data
 
     Returns:
-        data: [ROIs, trials, time]
+        data: [neurons, trials, time]
         labels: functional type
         type_names:
 
     """
-    filepath = Path(filepath)
-    data_toy = np.load(
-            filepath / "toy_data.npy"
-        ).astype("float32")
+    data_toy = np.load(filename_data).astype("float32")
 
-    labels = np.load(filepath / "toy_data_labels.npy")
+    labels = np.load(filename_labels)
 
     len_type_names = np.unique(labels).shape[0]
     type_names = [str(i) for i in range(len_type_names + 1)]
@@ -44,7 +42,7 @@ def load_data_bc(
     Load data for local and global chirp responses.
 
     Parameters:
-        filepath: path to bar and chrip response data
+        filepath: path to bar and chirp response data
         trim: cut off first sec of chirp due to experimental session dependent adaptation phase
 
     Returns:
@@ -146,13 +144,56 @@ def load_data_sc(
     )
     #df_clustered = pd.read_pickle(file_name)
     #labels = df_clustered["clusterID_sorted"].values.astype(int)
-    labels = np.load(filepath + "/labels_bar.npy")
+    labels = np.load(filepath + "/labels_bar_old.npy")
 
     #len_type_names = np.unique(labels).shape[0]
     #type_names = [str(i) for i in range(len_type_names + 1)]
     type_names = ['OFF', 'ON-OFF', 'ON', 'Sbc']
 
     return data_chirp_norm, data_bar_norm, labels, type_names
+
+
+def load_data_allen(
+    filepath="/gpfs01/berens/data/data/Allen_neuropixels_visual_coding/flashes_drifting_gratings/",
+):
+    """
+    Load data from the Allen Institute dataset.
+    Parameters:
+        filepath: path to the data directory
+        
+    Returns:
+        data_norm: normalized responses of shape (ROIs, trials, time)
+        labels: functional type labels
+        type_names: names of the functional types
+    """
+    # Load local chirp trial responses
+    filepath = Path(filepath)
+    data_flahses = np.load(filepath / "data_flashes_trials.npy").astype("float32")  # Shape: (ROIs, trials, time)
+    data_gratings = np.load(filepath / "data_gratings_trials.npy").astype("float32")  # Shape: (ROIs, trials, time)
+
+    # Normalize data
+    data_flahses_norm = normalize_data(data_flahses)
+    data_gratings_norm = normalize_data(data_gratings)
+
+    # Load labels
+    # labels = np.load(filepath / "labels_broad.npy")
+    # type_names = ['Visual Cortex', 'Visual Midbrain', 'Visual Thalamus']
+    labels = np.load(filepath / "labels.npy")
+    type_names = [
+        'APN',
+        'LGd',
+        'LGv',
+        'LP',
+        'VIS',
+        'VISal',
+        'VISam',
+        'VISl',
+        'VISp',
+        'VISpm',
+        'VISrl',
+    ]
+
+    return data_flahses_norm, data_gratings_norm, labels, type_names
 
 
 def normalize_data(data):
@@ -171,6 +212,8 @@ def normalize_data(data):
     unit_average = np.mean(data, axis=1)
     unit_mean = np.mean(unit_average, axis=1)
     unit_std = np.std(unit_average, axis=1)
+    # Replace zero standard deviations with a very small value to avoid division by zero
+    unit_std = np.where(unit_std == 0, 1e-12, unit_std)
 
     # Normalize each unit's data across all trials using the grand mean and grand SD
     data_normalized = (data - unit_mean[:, np.newaxis, np.newaxis]) / unit_std[
