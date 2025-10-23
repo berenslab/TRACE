@@ -18,9 +18,8 @@ from sc_utils import (
     TimeSeriesDataset,
     TimeSeriesMLP,
     TimeSeriesProjectionHead,
-    TorchVectorizedContrastiveTrialPairGenerator,
 )
-from timeseries_data import load_data_bc, load_data_sc, load_data_toy
+from timeseries_data import load_data_sc, load_data_toy, load_data_allen, load_data_bc
 from sc_utils import knn_accuracy, ari_score
 from tsimcne.losses import infonce
 
@@ -175,6 +174,27 @@ def main():
         help="Directory to save results."
     )
     parser.add_argument(
+        "-pd",
+        "--path_to_data",
+        type=Path,
+        default="",
+        help="Path do the data file."
+    )
+    parser.add_argument(
+        "-pl",
+        "--path_to_labels",
+        type=Path,
+        default="",
+        help="Path do the labels."
+    )
+    parser.add_argument(
+        "-pa",
+        "--path_to_augmented_data",
+        type=Path,
+        default="",
+        help="Path do the pre-computed augmented data."
+    )
+    parser.add_argument(
         "-o",
         "--output_dim",
         type=int,
@@ -209,13 +229,14 @@ def main():
         help="Device used for computing positive pairs, either 'cpu' or 'cuda'.",
     )
     args = parser.parse_args()
+    dataset_name = args.dataset_name
 
     # Set parameters
     model_name = str(args.model_name)
     torch.manual_seed(args.run)
     num_workers = 32
     if args.learning_rate is None:
-        lr = 'auto_batch'
+        lr = 'auto_batch' # lr = 0.03 * batch_size / 256
     else:
         lr = args.learning_rate
     if len(args.n_trials_pp) == 1:
@@ -228,7 +249,7 @@ def main():
     file_name = (
         f"{datetime_string}"
         f"_embd_{model_name}"
-        f"_dataset{args.dataset_name}"
+        f"_dataset{dataset_name}"
         f"_epochs{args.epochs}"
         f"_lr{lr}"
         f"_batchsize{args.batch_size}"
@@ -237,7 +258,7 @@ def main():
         f"_ntrialpp{formatted_n_trials_pp}"
         f"_flattenbar{str(args.flatten_bar)}"
         f"_dataug{args.augmentations}"
-        f"_device{args.device}"
+        #f"_device{args.device}"
     )
     print(f"Directory: {args.dir}")
     print(f"File name: {file_name}")
@@ -247,7 +268,7 @@ def main():
     models_dir.mkdir(parents=True, exist_ok=True)
 
     # Load data
-    if args.dataset_name == "sc":
+    if dataset_name == "sc":
         data_chirp, data_bar, labels, type_names = load_data_sc(flatten_bar=args.flatten_bar)
         data = [data_chirp, data_bar]
         if args.augmentations:
@@ -263,7 +284,7 @@ def main():
                 )
         else:
             noise_samples = None
-    elif args.dataset_name == "bc":
+    elif dataset_name == "bc":
         d1, labels, type_names = load_data_bc()
         data = [d1]
         if args.augmentations:
@@ -273,14 +294,22 @@ def main():
             )
         else:
             noise_samples = None
-    elif args.dataset_name == "toy":
-        d1, labels, type_names = load_data_toy()
+    elif dataset_name == "toy":
+        d1, labels, type_names = load_data_toy(filename_data=args.path_to_data, filename_labels=args.path_to_labels)
         data = [d1]
         if args.augmentations:
+            noise_samples = np.load(args.path_to_augmented_data)
+        else:
+            noise_samples = None
+    elif dataset_name == "allen":
+        data_flahses, data_gratings, labels, type_names = load_data_allen()
+        data = [data_flahses, data_gratings]
+        if args.augmentations:
             noise_samples = np.load(
-                "/gpfs01/berens/user/lschmors/Code/superior_colliculus"
-                "/20241211_simple_toy_dataset/data/toy_data_noise_samples.npy"
+                "/gpfs01/berens/data/data/Allen_neuropixels_visual_coding/flashes_drifting_gratings/"
+                "noise_samples.npy"
             )
+            print('Noise samples not available for Allen data.')
         else:
             noise_samples = None
 
@@ -361,7 +390,7 @@ def main():
         'loss': [mod_neuro.loss_df.groupby('epoch')['loss'].mean().values[-1]],
         'train_time': [mod_neuro.train_time],
     })
-    save_metrics.to_csv(Path(args.dir / "grid_search") / (f"{datetime_string}_{args.dataset_name}"
+    save_metrics.to_csv((f"{models_dir}/{datetime_string}_{args.dataset_name}"
                                                         f"_outputdim{args.output_dim}"
                                                         f"_ntrialpp{formatted_n_trials_pp}"
                                                         f"_flattenbar{str(args.flatten_bar)}"
