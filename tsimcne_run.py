@@ -13,14 +13,15 @@ from matplotlib import pyplot as plt
 from matplotlib.colors import ListedColormap
 import seaborn as sns
 import sklearn
-from sc_utils import (
+from utils import (
     ContrastiveTrialPairGenerator,
     TimeSeriesDataset,
     TimeSeriesMLP,
     TimeSeriesProjectionHead,
+    knn_accuracy,
+    ari_score
 )
 from timeseries_data import load_data_sc, load_data_toy, load_data_allen, load_data_bc
-from sc_utils import knn_accuracy, ari_score
 from tsimcne.losses import infonce
 
 
