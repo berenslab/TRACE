@@ -6,7 +6,7 @@ This is the package repository for TRACE, a contrastive learning framework that 
 
 Run TRACE with default settings:
 ```bash
-python tsimcne_run.py -d path/to/output/directory
+python run_trace.py -d path/to/output/directory
 ```
 
 ### Required Arguments

@@ -75,13 +75,13 @@ class NeuroDataModule(lightning.LightningDataModule):
         ), torch.tensor(lbl1)
 
     def train_dataloader(self):
-        # Uncomment for non-vectorized version
         dataset = C4tsimcne(
             self.data,
             self.n_trials_pp,
             data_aug=self.data_aug,
             noise_samples=self.noise_samples,
         )
+        # Non vectorized version
         return torch.utils.data.DataLoader(
             dataset,
             batch_size=self.batch_size,
@@ -90,6 +90,7 @@ class NeuroDataModule(lightning.LightningDataModule):
             collate_fn=self.collate_fn,
             **self.kwargs,
         )
+        # Un-comment for vectorized version
         #return TorchVectorizedContrastiveTrialPairGenerator(
         #    trials = self.data,
         #    n_trials_pp = self.n_trials_pp,
