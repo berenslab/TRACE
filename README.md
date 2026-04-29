@@ -6,34 +6,28 @@ This is the package repository for TRACE, a contrastive learning framework that 
 
 TRACE uses [uv](https://docs.astral.sh/uv/) for dependency and environment management.
 
-### 1. Install uv
-
+1. Install uv:
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-See the [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/) for other platforms (Windows, Homebrew, pipx).
-
-### 2. Clone the repository
-
+2. Clone the TRACE repository:
 ```bash
 git clone https://github.com/berenslab/TRACE.git
 cd TRACE
 ```
 
-### 3. Set up the environment
-
+3. Set up the environment:
 ```bash
 uv sync
 ```
+→ This will install all dependencies pinned in `uv.lock` and install the TRACE package itself in editable mode.
 
-This will install all dependencies pinned in `uv.lock` and install the TRACE package itself in editable mode.
-
-### 4. Verify the install
-
+4. Verify the install:
 ```bash
 uv run trace --help
 ```
+→ This should show the argparse help. If you get command not found, run `uv sync` again.
 
 # Usage
 
@@ -47,7 +41,7 @@ uv run trace -d path/to/output/directory
 - `-d, --dir`: Directory to save results and trained models
 
 ### Data Arguments
-- `-ds, --dataset_name`: Name of the dataset (default: `sc`)
+- `-ds, --dataset_name`: Name of the dataset (default: `sc` for the superior colliculus dataset)
 - `-pa, --path_to_augmented_data`: Path to pre-computed augmented data (optional)
 
 ### Model Arguments
