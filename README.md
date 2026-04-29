@@ -2,11 +2,45 @@
 
 This is the package repository for TRACE, a contrastive learning framework that creates interpretable 2D embeddings of high-dimensional time series data by generating positive pairs through trial averaging, exploiting the multi-trial structure common in neuroscience experiments.
 
+# Installation
+
+TRACE uses [uv](https://docs.astral.sh/uv/) for dependency and environment management.
+
+### 1. Install uv
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+See the [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/) for other platforms (Windows, Homebrew, pipx).
+
+### 2. Clone the repository
+
+```bash
+git clone https://github.com/berenslab/TRACE.git
+cd TRACE
+```
+
+### 3. Set up the environment
+
+```bash
+uv sync
+```
+
+This will install all dependencies pinned in `uv.lock` and install the TRACE package itself in editable mode.
+
+### 4. Verify the install
+
+```bash
+uv run trace --help
+```
+
 # Usage
 
 Run TRACE with default settings:
+
 ```bash
-python run_trace.py -d path/to/output/directory
+uv run trace -d path/to/output/directory
 ```
 
 ### Required Arguments
@@ -14,8 +48,6 @@ python run_trace.py -d path/to/output/directory
 
 ### Data Arguments
 - `-ds, --dataset_name`: Name of the dataset (default: `sc`)
-- `-pd, --path_to_data`: Path to the data file
-- `-pl, --path_to_labels`: Path to the labels file
 - `-pa, --path_to_augmented_data`: Path to pre-computed augmented data (optional)
 
 ### Model Arguments
@@ -46,22 +78,22 @@ TRACE can be used with specified hyperparameters, custom datasets, and with eith
 
 **Train with custom hyperparameters:**
 ```bash
-python tsimcne_run.py -d results/ -e 1000 -b 1280 -lr 0.1
+uv run trace -d results/ -e 1000 -b 1280 -lr 0.1
 ```
 
 **Use custom data:**
 ```bash
-python tsimcne_run.py -d results/ -pd data/neural_recordings.npy -pl data/labels.npy
+uv run trace -d results/ -pd data/neural_recordings.npy -pl data/labels.npy
 ```
 
 **Adjust trial averaging:**
 ```bash
-python tsimcne_run.py -d results/ -tpp 10 8  # 10 trials for first view, 8 for second
+uv run trace -d results/ -tpp 7 5  # 10 trials for first stimulus, 8 for second
 ```
 
 **Use standard augmentations instead of trial averaging:**
 ```bash
-python tsimcne_run.py -d results/ -a
+uv run trace -d results/ -a
 ```
 
 # Contributions
@@ -71,12 +103,11 @@ python tsimcne_run.py -d results/ -a
 * Sebastian Damrich
 
 # Citation
-If you find the code useful for your research, please consider citing our work:
-````
-@misc{schmors2025trace,
+```
+@article{schmors2025trace,
       title={TRACE: Contrastive learning for multi-trial time-series data in neuroscience},
       author={Schmors, Lisa and Gonschorek, Dominic and B{\"o}hm, Jan Niklas and Qiu, Yongrong and Zhou, Na and Kobak, Dmitry and Tolias, Andreas and Sinz, Fabian and Reimer, Jacob and Franke, Katrin and others},
-      journal={arXiv preprint arXiv:2506.04906},
+      journal={Neural Information Processing Systems 2025},
       year={2025}
 }
-````
+```
