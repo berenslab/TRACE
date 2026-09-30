@@ -96,8 +96,8 @@ class ContrastiveTrialPairGenerator(Dataset):
                 self.samples1[i] = sample1_
                 sample2_ = np.mean(ds[idx, trial_indices2, :], axis=0)
                 self.samples2[i] = sample2_
-            sample1 = np.concat(self.samples1)
-            sample2 = np.concat(self.samples2)
+            sample1 = np.concatenate(self.samples1)
+            sample2 = np.concatenate(self.samples2)
 
         return sample1, sample2
 

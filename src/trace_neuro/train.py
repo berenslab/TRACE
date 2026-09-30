@@ -236,7 +236,7 @@ def main():
     mod_neuro = tsimcne.PLtSimCNE(
         backbone=TimeSeriesMLP(
             input_features=sum(ds.shape[2] for ds in data),
-            n_features=(bbdim := 128),
+            out_dim=(bbdim := 128),
         ),
         backbone_dim=bbdim,
         projection_head=TimeSeriesProjectionHead(n_input=bbdim, n_output=args.output_dim),

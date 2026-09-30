@@ -3,12 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class TimeSeriesMLP(nn.Module):
-    def __init__(self, input_features, n_features=2):
+    def __init__(self, input_features, out_dim=2):
         super(TimeSeriesMLP, self).__init__()
-        self.fc1 = nn.Linear(input_features, 768)  # First layer
-        self.fc2 = nn.Linear(768, 512)  # Second layer
-        self.fc3 = nn.Linear(512, 256)  # Third layer
-        self.fc4 = nn.Linear(256, n_features)  # Last layer
+        self.fc1 = nn.Linear(input_features, 768) # First layer
+        self.fc2 = nn.Linear(768, 512) # Second layer
+        self.fc3 = nn.Linear(512, 256) # Third layer
+        self.fc4 = nn.Linear(256, out_dim) # Last layer
 
     def forward(self, x):
         # Flatten the input in case it comes from a conv layer or it's not already flat

@@ -23,7 +23,16 @@ uv sync
 ```
 → This will install all dependencies pinned in `uv.lock` and install the TRACE package itself in editable mode.
 
-4. Verify the install:
+4. Install the package
+```bash
+uv pip install .
+```
+or in editable mode (changes to source files take effect immediately without reinstalling):
+```bash
+uv pip install -e .
+```
+
+5. Verify the install:
 ```bash
 uv run trace --help
 ```

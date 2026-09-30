@@ -2,6 +2,7 @@
 
 __version__ = "0.1.0"
 
+from trace_neuro.estimator import TRACE
 from trace_neuro.models import TimeSeriesMLP, TimeSeriesProjectionHead
 from trace_neuro.pairs import ContrastiveTrialPairGenerator
 from trace_neuro.evaluate import knn_accuracy, ari_score
