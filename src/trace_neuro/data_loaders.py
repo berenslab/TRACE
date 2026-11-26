@@ -146,6 +146,155 @@ def load_data_allen(
 
     return data_flahses_norm, data_gratings_norm, labels, type_names
 
+def load_data_hcptrt(filepath="/gpfs01/berens/user/lschmors/Code/fMRI_TRACE/Data/data_EXTRACTED",
+                     subject="sub-06"
+):
+    """
+    Load human connectome project (HCP) test-retest (trt) task-fMRI responses for one subject.
+
+    Reads the pre-extracted trial arrays for all HCP tasks (motor,
+    gambling, working memory, social, emotion, language, relational), applies
+    `normalize_data` to each, and loads the region labels shared across tasks.
+
+    Parameters
+    ----------
+    filepath : str
+        Root directory containing the `dataset_hcptrt_voxels_ca_parcels_<subject>`
+        folders.
+    subject : str
+        Subject identifier, e.g. "sub-06".
+
+    Returns
+    -------
+    data_*_norm : ndarray
+        Seven normalized response arrays of shape [voxels, trials, time_bins],
+        in the order motor, gambling, wm, social, emotion, language, relational.
+    labels : ndarray
+        Integer region label per voxel, indexing into `type_names`
+        (taken from the motor run's region file).
+    type_names : ndarray
+        Unique region names, sorted.
+    """
+    # Load task responses [voxels, trials, time_bins]
+    data_motor = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/motor_all_trials_norm.npy')
+    data_gambling = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/gambling_all_trials_norm.npy')
+    data_wm = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/wm_all_trials_norm.npy')
+    data_social = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/social_all_trials_norm.npy')
+    data_emotion = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/emotion_all_trials_norm.npy')
+    data_language = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/language_all_trials_norm.npy')
+    data_relational = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/relational_all_trials_norm.npy')
+
+    # Normalize data
+    data_motor_norm = normalize_data(data_motor)
+    data_gambling_norm = normalize_data(data_gambling)
+    data_wm_norm = normalize_data(data_wm)
+    data_social_norm = normalize_data(data_social)
+    data_emotion_norm = normalize_data(data_emotion)
+    data_language_norm = normalize_data(data_language)
+    data_relational_norm = normalize_data(data_relational)
+
+    # Load labels
+    y_arr_str = np.load(filepath + f"/dataset_hcptrt_voxels_ca_parcels_{subject}/motor_y_regions.npy")
+    type_names, labels = np.unique(y_arr_str, return_inverse=True)
+
+    return (data_motor_norm, data_gambling_norm, data_wm_norm, data_social_norm, data_emotion_norm, data_language_norm,
+            data_relational_norm, labels, type_names)
+
+def load_data_hcptrt_restingstate(filepath="/gpfs01/berens/user/lschmors/Code/fMRI_TRACE/Data/data_EXTRACTED",
+                     subject="sub-06"
+):
+    """
+    Load human connectome project (HCP) test-retest (trt) task-fMRI responses for one subject.
+
+    Reads the pre-extracted trial arrays for all HCP tasks (motor,
+    gambling, working memory, social, emotion, language, relational), applies
+    `normalize_data` to each, and loads the region labels shared across tasks.
+
+    Parameters
+    ----------
+    filepath : str
+        Root directory containing the `dataset_hcptrt_voxels_ca_parcels_<subject>`
+        folders.
+    subject : str
+        Subject identifier, e.g. "sub-06".
+
+    Returns
+    -------
+    data_*_norm : ndarray
+        Seven normalized response arrays of shape [voxels, trials, time_bins],
+        in the order motor, gambling, wm, social, emotion, language, relational.
+    labels : ndarray
+        Integer region label per voxel, indexing into `type_names`
+        (taken from the motor run's region file).
+    type_names : ndarray
+        Unique region names, sorted.
+    """
+    # Load task responses [voxels, trials, time_bins]
+    data_restingstate = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/restingstate_all_trials_norm.npy')
+
+    # Normalize data
+    data_restingstate_norm = normalize_data(data_restingstate)
+
+    # Load labels
+    y_arr_str = np.load(filepath + f"/dataset_hcptrt_voxels_ca_parcels_{subject}/motor_y_regions.npy")
+    type_names, labels = np.unique(y_arr_str, return_inverse=True)
+
+    return (data_restingstate_norm, labels, type_names)
+
+
+def load_data_hcptrt_task(filepath="/gpfs01/berens/user/lschmors/Code/fMRI_TRACE/Data/data_EXTRACTED",
+                     subject="sub-06", task="motor",
+):
+    """
+    Load human connectome project (HCP) test-retest (trt) task-fMRI responses for one subject.
+
+    Reads the pre-extracted trial arrays for all HCP tasks (motor,
+    gambling, working memory, social, emotion, language, relational), applies
+    `normalize_data` to each, and loads the region labels shared across tasks.
+
+    Parameters
+    ----------
+    filepath : str
+        Root directory containing the `dataset_hcptrt_voxels_ca_parcels_<subject>`
+        folders.
+    subject : str
+        Subject identifier, e.g. "sub-06".
+
+    Returns
+    -------
+    data_*_norm : ndarray
+        Seven normalized response arrays of shape [voxels, trials, time_bins],
+        in the order motor, gambling, wm, social, emotion, language, relational.
+    labels : ndarray
+        Integer region label per voxel, indexing into `type_names`
+        (taken from the motor run's region file).
+    type_names : ndarray
+        Unique region names, sorted.
+    """
+    # Load task responses [voxels, trials, time_bins]
+    if task == "motor":
+        data_task = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/motor_all_trials_norm.npy')
+    if task == "gambling":
+        data_task = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/gambling_all_trials_norm.npy')
+    if task == "wm":
+        data_task = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/wm_all_trials_norm.npy')
+    if task == "social":
+        data_task = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/social_all_trials_norm.npy')
+    if task == "emotion":
+        data_task = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/emotion_all_trials_norm.npy')
+    if task == "language":
+        data_task = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/language_all_trials_norm.npy')
+    if task == "relational":
+        data_task = np.load(f'{filepath}/dataset_hcptrt_voxels_ca_parcels_{subject}/relational_all_trials_norm.npy')
+    # Normalize data
+    data_task_norm = normalize_data(data_task)
+
+    # Load labels
+    y_arr_str = np.load(filepath + f"/dataset_hcptrt_voxels_ca_parcels_{subject}/motor_y_regions.npy")
+    type_names, labels = np.unique(y_arr_str, return_inverse=True)
+
+    return (data_task_norm, labels, type_names)
+
 
 def normalize_data(data):
     """
